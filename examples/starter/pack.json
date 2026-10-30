@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "id": "starter",
+  "title": "Example questions",
+  "topics": [
+    {"id": "numbers", "title": "Numbers"},
+    {"id": "addition", "title": "Addition", "parent_id": "numbers"},
+    {"id": "nature", "title": "Nature"}
+  ],
+  "questions": [
+    {
+      "id": "two-plus-two",
+      "prompt": "What is 2 + 2?",
+      "explanation": "Adding two pairs gives four items.",
+      "topic_ids": ["addition"],
+      "answers": [
+        {"id": "four", "text": "4", "correct": true},
+        {"id": "five", "text": "5", "correct": false},
+        {"id": "three", "text": "3", "correct": false}
+      ]
+    },
+    {
+      "id": "one-plus-one",
+      "prompt": "What is 1 + 1?",
+      "explanation": "One item together with another item makes two.",
+      "topic_ids": ["addition"],
+      "answers": [
+        {"id": "two", "text": "2", "correct": true},
+        {"id": "three", "text": "3", "correct": false}
+      ]
+    },
+    {
+      "id": "plant-part",
+      "prompt": "Which part of a plant typically absorbs water from the soil?",
+      "explanation": "Roots absorb water from the soil.",
+      "topic_ids": ["nature"],
+      "answers": [
+        {"id": "root", "text": "The roots", "correct": true},
+        {"id": "flower", "text": "The flowers", "correct": false}
+      ]
+    }
+  ]
+}
