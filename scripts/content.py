@@ -401,7 +401,9 @@ def install(source, store, report_path, namespace=""):
                 entries = [entry for entry in archive.infolist() if entry.filename == 'pack.json']
                 if len(entries) == 1 and entries[0].file_size <= MAX_FILE:
                     candidate = decode(archive.read(entries[0]))
-                    if isinstance(candidate, dict):
+                    if isinstance(candidate, dict) and all(
+                            isinstance(candidate.get(kind), list) and len(candidate[kind]) <= maximum
+                            for kind, maximum in (('questions', 5000), ('topics', 1000))):
                         inventory = candidate
                         report['inventory_available'] = True
         except (ValueError, KeyError, OSError, zipfile.BadZipFile, RuntimeError, NotImplementedError):
@@ -473,13 +475,16 @@ def install(source, store, report_path, namespace=""):
         if committed:
             return {'accepted': True, 'snapshot': version, 'restart_required': True, 'archive_sha256': archive_hash,
                     'report_sha256': report_hash, 'report_path': str(report_path), 'report': report, 'warning': str(error)}
-        report.update(outcome='rejected', errors=[str(error)])
+        message = str(error)
+        if len(message) > 1024:
+            message = message[:1024] + '…'
+        report.update(outcome='rejected', errors=[message])
         report.pop('snapshot', None)
         report['pack'] = None
         for kind in ('questions', 'topics'):
             values = inventory.get(kind, [])
-            report[kind] = [{'input_index': index, 'input_id': value.get('id') if isinstance(value, dict) and isinstance(value.get('id'), str) else None,
-                             'internal_id': None, 'status': 'not_imported', 'reason': 'Entire archive rejected: ' + str(error)}
+            report[kind] = [{'input_index': index, 'input_id': value.get('id') if isinstance(value, dict) and isinstance(value.get('id'), str) and ID.fullmatch(value['id']) else None,
+                             'internal_id': None, 'status': 'not_imported', 'reason': 'Entire archive rejected: ' + message}
                             for index, value in enumerate(values if isinstance(values, list) else [])]
         report['counts'] = {kind: {'not_imported': len(report[kind])} for kind in ('questions', 'topics')}
         report_hash = save_report(report_path, report)

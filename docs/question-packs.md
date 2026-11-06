@@ -103,7 +103,7 @@ An invalid batch is entirely rejected. All input questions and topics that can
 be enumerated are `not_imported`, with `internal_id: null` and a batch-failure
 reason. No new content is activated and the prior CURRENT pointer is unchanged.
 This does not assert that every individual item is invalid: one invalid item
-can reject the batch. An unreadable archive/manifest has no invented item list.
+can reject the batch. An unreadable or over-limit archive/manifest has no invented item list (`inventory_available: false`). Invalid IDs are returned as null with an input index; error messages are bounded to prevent oversized rejection reports.
 
 The report file must be new, outside the store and distinct from the input ZIP.
 Failure to reserve it prevents import. The caller receives its exact-byte SHA-256

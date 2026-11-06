@@ -312,6 +312,21 @@ class ContentTests(unittest.TestCase):
             self.install()
         self.assertFalse((self.store / 'CURRENT').exists())
 
+    def test_rejection_report_bounds_untrusted_error_text_and_inventory(self):
+        self.pack['questions'][0]['id'] = 'q' * 5000
+        with self.assertRaises(content.ImportFailure) as raised:
+            self.install()
+        report = raised.exception.result['report']
+        self.assertLessEqual(len(report['errors'][0]), 1025)
+        self.assertIsNone(report['questions'][0]['input_id'])
+        self.assertEqual(report['questions'][0]['input_index'], 0)
+        self.assertTrue(all(len(q['reason']) < 1100 for q in report['questions']))
+        self.pack['topics'] = [{'id': 'large', 'title': 'Synthetic'}] * 1001
+        with self.assertRaises(content.ImportFailure) as raised:
+            self.install()
+        self.assertFalse(raised.exception.result['report']['inventory_available'])
+        self.assertEqual(raised.exception.result['report']['questions'], [])
+
     def test_user_topic_root_cannot_collide_with_pack_root(self):
         self.pack['topics'].append({'id': 'root', 'title': 'Collision'})
         self.install()

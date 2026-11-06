@@ -87,7 +87,7 @@ and the response has these headers:
 
 Save the body without parsing/reformatting and verify the headers independently.
 The report contains input-to-internal mappings; these belong to the uploader,
-not the engine. A rejected batch imports nothing and assigns no new internal IDs.
+not the engine. A rejected batch imports nothing and assigns no new internal IDs. Error text is bounded; invalid IDs use a null input ID and an input index. Over-limit item counts cannot produce an unbounded failure inventory.
 For accepted content, normalized questions, answer wording, topic names and
 images are stored under internal identifiers and account namespaces. The same
 input IDs in two different accounts do not collide and are not shared.
