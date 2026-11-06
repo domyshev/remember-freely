@@ -146,7 +146,7 @@ func openDatabase(path string, sources ...contentFiles) (*sql.DB, error) {
 	if columns > 0 && !hasImage {
 		return fail(fmt.Errorf("incompatible database layout: migrate a verified backup before upgrading"))
 	}
-	if _, err := db.Exec(schema); err != nil {
+	if _, err := db.Exec(schema + importSchema); err != nil {
 		return fail(fmt.Errorf("apply schema: %w", err))
 	}
 	if err := migrateTopicRunKinds(db); err != nil {
@@ -177,11 +177,26 @@ func seedDatabase(db *sql.DB, sources ...contentFiles) error {
 	if err := json.Unmarshal(data, &questions); err != nil {
 		return err
 	}
+	return seedQuestions(db, questions)
+}
+
+type contentExecutor interface {
+	Exec(string, ...any) (sql.Result, error)
+}
+
+func seedQuestions(db *sql.DB, questions []seedQuestion) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	if err := writeQuestions(tx, questions); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func writeQuestions(tx contentExecutor, questions []seedQuestion) error {
 	seen := map[string]bool{}
 	validID := regexp.MustCompile(`^[a-f0-9]{24}$`)
 	for _, q := range questions {
@@ -220,5 +235,5 @@ func seedDatabase(db *sql.DB, sources ...contentFiles) error {
 			}
 		}
 	}
-	return tx.Commit()
+	return nil
 }

@@ -64,7 +64,7 @@ Use the global `--store` option **before** the command when installing to a diff
 python3 scripts/content.py --store /path/to/content import /path/to/my-pack.zip --report /path/to/import-report.json
 ```
 
-Set `CONTENT_DIR` to that same directory before starting the API. The server loads a verified, immutable snapshot at startup. An import does not change an already running server; restart it after a successful import. All signed-in users of an installation can access its installed packs; private per-user packs and browser uploads are not implemented.
+Set `CONTENT_DIR` to that same directory before starting the API. The server loads a verified, immutable snapshot at startup. An import does not change an already running server; restart it after a successful import. Administrator CLI packs are shared by all signed-in users. Account imports through Settings or the API are private to their owner and become available without a server restart.
 
 Imports accept ZIP files and return a separate JSON report with input-to-internal
 IDs, outcomes and answer-letter mappings. The engine records the SHA-256 of the
@@ -73,6 +73,17 @@ content under internal IDs, not the original ZIP, source identifiers, filenames
 or returned report. The uploader keeps the original ZIP, report and any source
 correspondence. Imports are atomic: an invalid archive activates no questions.
 Original-source export is unavailable; back up the content store and SQLite.
+
+For private account imports, open **User menu → Settings**. Create a named,
+expiring API key (shown only once), upload a ZIP with progress, revoke/delete keys
+and view upload history with both hashes and UTC timestamps. Reports are returned
+only to the caller; save them before closing Settings. An API key can import
+packs and read its account's upload history, but cannot manage keys or train.
+
+See [the account import API](docs/import-api.md) for client-agent instructions,
+limits and a streaming Python client. Its URL is `/api/imports` on the frontend's
+same origin. Account content lives in `IMPORT_DIR` (by default `account-content`
+beside SQLite); keep it outside application code and include it in runtime backups.
 
 Read [the pack format](docs/question-packs.md) for fields, limits, topic organization and update rules. Read [the agent guide](docs/agent-import.md) to delegate pack preparation and import to a coding agent.
 
@@ -83,6 +94,7 @@ Read [the pack format](docs/question-packs.md) for fields, limits, topic organiz
 - Full runs, separate batches of newly added questions and mistake reviews.
 - Individual saved progress, date-filtered history and topic statistics.
 - Email-code login, with console delivery for local development and optional Resend delivery.
+- Account-private ZIP imports, expiring/revocable API keys and UTC upload history.
 - Questions with 2–8 answer choices, exactly one correct answer and up to eight images.
 
 Each pack has its own ID namespace. Display numbers and answer letters are presentation details. Imported question IDs are derived from the pack ID and the stable local question ID, and do not depend on wording, topic placement or filenames.
@@ -113,6 +125,6 @@ docker run --rm -p 127.0.0.1:5050:8080 \
   remember-freely
 ```
 
-The container serves the frontend and API on port 8080. It does not need Python at runtime: run the content command on the host against the content directory mounted into `/app/data/content`, then restart the container. Preserve the complete content store and SQLite database when moving an installation. For HTTPS deployments, set `COOKIE_SECURE=true` and configure a strong session secret and email delivery.
+The container serves the frontend and API on port 8080. The image includes Python 3 for the shared, embedded account importer. Administrator CLI imports can still run on the host against `/app/data/content` and require a container restart; API account imports activate immediately. Preserve the complete shared content store, account-content directory and SQLite database when moving an installation. For HTTPS deployments, set `COOKIE_SECURE=true` and configure a strong session secret and email delivery.
 
 Before upgrading a production database, create a SQLite online backup and verify `PRAGMA quick_check` and `PRAGMA foreign_key_check`. Do not copy only a live database file while WAL mode is active. Deployment is managed separately from this repository.

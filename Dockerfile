@@ -15,11 +15,12 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY backend ./backend
+COPY scripts ./scripts
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /remember-freely-server ./backend/cmd/server
 
 FROM alpine:3.22
 
-RUN apk add --no-cache ca-certificates sqlite \
+RUN apk add --no-cache ca-certificates sqlite python3 \
     && addgroup -S -g 10001 app \
     && adduser -S -D -H -u 10001 -G app app \
     && mkdir -p /app/data /app/web \

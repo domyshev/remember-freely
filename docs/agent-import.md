@@ -71,7 +71,15 @@ uploader's review; never guess the answer key.
    images/example.jpg
    ```
 
-## Import and verify the returned report
+## Choose the import destination
+
+For a user's private account, use [import-api.md](import-api.md) and the API key
+created by that user in Settings. The same ZIP rules apply. Do not use the
+administrator's CLI store for a private account import; CLI packs are shared.
+The API client shows byte progress and returns the report with checksum headers.
+Account imports activate without a restart; refresh the frontend afterward.
+
+## Import and verify the returned report (administrator CLI)
 
 When authorized to import, choose a **new** report filename outside the content
 store and run:

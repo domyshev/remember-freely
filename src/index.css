@@ -878,3 +878,20 @@ button { font:inherit; }
 
 .question-gallery { display: flex; flex-direction: column; gap: 12px; width: 100%; max-height: 100%; overflow-y: auto; }
 .question-gallery img { flex-shrink: 0; width: 100%; height: auto; object-fit: contain; }
+
+
+.account-imports { display: grid; gap: 24px; margin-top: 24px; }
+.account-imports section { border-top: 1px solid var(--border, #dbe3ed); padding-top: 16px; min-width: 0; }
+.account-imports h3 { margin: 0 0 10px; }
+.account-imports p { font-size: 13px; line-height: 1.5; }
+.account-imports label { display: grid; gap: 6px; font-size: 13px; }
+.account-imports input { width: 100%; box-sizing: border-box; min-width: 0; padding: 9px; border: 1px solid #c8d3e0; border-radius: 7px; font: inherit; }
+.account-imports form { display: grid; gap: 10px; margin: 12px 0; }
+.account-imports button { justify-self: start; }
+.account-imports code { display: block; font-size: 11px; overflow-wrap: anywhere; white-space: normal; }
+.api-key-row,.import-history-row,.created-api-key,.import-report-download { display: grid; gap: 7px; padding: 12px; margin-top: 10px; border: 1px solid #dbe3ed; border-radius: 8px; }
+.api-key-row small,.import-history-row small { overflow-wrap: anywhere; }
+.api-key-row>div,.created-api-key>div { display: flex; gap: 8px; flex-wrap: wrap; }
+.created-api-key { background: #eef7ff; }
+.account-imports progress { display: block; width: 100%; margin: 8px 0; }
+.api-endpoint { overflow-wrap: anywhere; }

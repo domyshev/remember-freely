@@ -216,18 +216,19 @@ def canonical(pack_id, question_id):
     return digest((pack_id + ':' + question_id).encode())[:24]
 
 
-def normalize(files):
+def normalize(files, namespace=""):
     """Keep educational content, replacing caller-owned identifiers and filenames."""
     source = validate(files)
-    pid = canonical('pack', source['id'])
-    topic_ids = {topic['id']: canonical('topic:' + source['id'], topic['id']) for topic in source['topics']}
+    identity = namespace + ':' + source['id'] if namespace else source['id']
+    pid = canonical('pack', identity)
+    topic_ids = {topic['id']: canonical('topic:' + identity, topic['id']) for topic in source['topics']}
     pack = {'schema_version': 1, 'id': pid, 'title': source['title'], 'topics': [], 'questions': []}
     for topic in source['topics']:
         pack['topics'].append({'id': topic_ids[topic['id']], 'title': topic['title'],
                                **({'parent_id': topic_ids[topic['parent_id']]} if topic.get('parent_id') else {})})
     normalized = {}
     for question in source['questions']:
-        cid = canonical(source['id'], question['id'])
+        cid = canonical(identity, question['id'])
         item = {'id': cid, 'prompt': question['prompt'], 'explanation': question.get('explanation', ''),
                 'topic_ids': [topic_ids[tid] for tid in question['topic_ids']], 'answers': [], 'images': []}
         for index, answer in enumerate(sorted(question['answers'], key=lambda a: a['id'])):
@@ -239,6 +240,10 @@ def normalize(files):
             item['images'].append(name)
         pack['questions'].append(item)
     normalized['pack.json'] = json_bytes(pack)
+    if len(normalized) > 10002 or any(len(data) > MAX_FILE for data in normalized.values()):
+        fail('Normalized pack exceeds file-count or per-file limits')
+    if sum(len(data) for data in normalized.values()) > MAX_TOTAL:
+        fail('Normalized pack exceeds 64 MiB after image reuse is expanded')
     validate(normalized)
     return normalized
 
@@ -367,7 +372,7 @@ def record_hashes(store, archive_hash, report_hash):
     return target, True
 
 
-def install(source, store, report_path):
+def install(source, store, report_path, namespace=""):
     source, store, report_path = Path(source), Path(store), Path(report_path)
     if report_path.resolve() in (source.resolve(), store.resolve()) or store.resolve() in report_path.resolve().parents:
         fail('Report must be outside the content store and must not overwrite the input ZIP')
@@ -402,7 +407,7 @@ def install(source, store, report_path):
         except (ValueError, KeyError, OSError, zipfile.BadZipFile, RuntimeError, NotImplementedError):
             pass
         incoming = read_files(data)
-        normalized = normalize(incoming)
+        normalized = normalize(incoming, namespace)
         pack = validate(normalized)
         with locked(store):
             packs = installed(store)
@@ -434,7 +439,10 @@ def install(source, store, report_path):
                 for name, value in assets.items():
                     (pending / 'assets' / name).write_bytes(value)
                 checksums = {path.relative_to(pending).as_posix(): digest(path.read_bytes()) for path in sorted(pending.rglob('*')) if path.is_file()}
-                (pending / 'checksums.json').write_bytes(json_bytes(checksums))
+                manifest = json_bytes(checksums)
+                if len(manifest) > MAX_FILE:
+                    fail('Snapshot checksum manifest exceeds the per-file limit')
+                (pending / 'checksums.json').write_bytes(manifest)
                 if not destination.exists():
                     os.rename(pending, destination)
                     pending.mkdir()
@@ -489,6 +497,7 @@ def main():
     check.add_argument('source', type=Path)
     ingest = commands.add_parser('import')
     ingest.add_argument('source', type=Path)
+    ingest.add_argument('--namespace', default='', help='Internal namespace for account-owned imports')
     ingest.add_argument('--report', type=Path, required=True, help='New JSON file outside the content store')
     commands.add_parser('list')
     args = parser.parse_args()
@@ -497,7 +506,7 @@ def main():
             pack = validate(read_files(args.source))
             result = {'pack': pack['id'], 'topics': len(pack['topics']), 'questions': len(pack['questions']), 'valid': True}
         elif args.command == 'import':
-            result = install(args.source, args.store, args.report)
+            result = install(args.source, args.store, args.report, args.namespace)
             result.pop('report')
         else:
             result = [{'id': pid, 'title': validate(files)['title'], 'questions': len(validate(files)['questions'])} for pid, files in installed(args.store).items()]

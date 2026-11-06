@@ -45,6 +45,14 @@ func loadContent(directory string) (contentFiles, map[string][]byte, error) {
 	if !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(version) {
 		return nil, nil, fmt.Errorf("invalid content snapshot pointer")
 	}
+	return loadSnapshot(directory, version)
+}
+
+func loadSnapshot(directory, version string) (contentFiles, map[string][]byte, error) {
+	if !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(version) {
+		return nil, nil, fmt.Errorf("invalid snapshot identity")
+	}
+	assets := map[string][]byte{}
 	root := filepath.Join(directory, "versions", version)
 	manifest, err := os.ReadFile(filepath.Join(root, "checksums.json"))
 	if err != nil {

@@ -66,7 +66,7 @@ func reconcileTopicMemberships(db *sql.DB, sources ...contentFiles) error {
 	}
 	defer tx.Rollback()
 	var count int
-	if err = tx.QueryRow(`SELECT COUNT(*) FROM taxonomy_memberships`).Scan(&count); err != nil {
+	if err = tx.QueryRow(`SELECT COUNT(*) FROM taxonomy_memberships WHERE topic_id NOT IN (SELECT topic_id FROM account_topics)`).Scan(&count); err != nil {
 		return err
 	}
 	if count == 0 {
@@ -99,7 +99,7 @@ func reconcileTopicMemberships(db *sql.DB, sources ...contentFiles) error {
 	if err != nil {
 		return err
 	}
-	if _, err = tx.Exec(`UPDATE taxonomy_memberships SET present=0`); err != nil {
+	if _, err = tx.Exec(`UPDATE taxonomy_memberships SET present=0 WHERE topic_id NOT IN (SELECT topic_id FROM account_topics)`); err != nil {
 		return err
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)

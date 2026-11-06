@@ -72,7 +72,7 @@ content/
 
 `CURRENT` is atomically replaced only after a complete snapshot has been written. Do not hand-edit installed snapshots. Keep authored packs outside the application source tree, or in ignored `question-packs/` or `imports/` folders. Keep the uploader-owned ZIP and import report outside Git. Original-source export is unavailable because original IDs and filenames are not retained. No question content needs to be committed to publish the engine.
 
-JSON packs are the supported interchange format in version 1. CSV/Excel import, an in-browser editor, per-user pack ownership, automatic reload and multiple correct answers are not implemented.
+JSON packs inside ZIP archives are the supported interchange format in version 1. Administrator CLI packs are shared and require restart. The [account import API](import-api.md) supports private per-user packs and activates them without restart; Settings includes a ZIP uploader. CSV/Excel import, an in-browser question editor and multiple correct answers are not implemented.
 
 
 ## ZIP imports, reports and checksum records
@@ -125,7 +125,7 @@ Nonexistent/nonregular/oversized inputs can fail before an exact ZIP hash is
 available; their report has a null archive hash and no two-hash record. Unusable
 report destinations fail before activation and cannot return a report file.
 Check the command exit status and summary rather than assuming any file means
-success. The report describes snapshot activation; restart is still required.
+success. The CLI report describes shared snapshot activation; a restart is still required for CLI imports. Account API imports activate transactionally and require no restart.
 
 Legacy source-preserving stores are not silently converted or erased. Imports
 into those stores are rejected. Back them up, retain original source ZIPs and

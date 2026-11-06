@@ -11,6 +11,7 @@ type Config struct {
 	Address       string
 	DatabasePath  string
 	StaticDir     string
+	ImportDir     string
 	ContentDir    string
 	SessionSecret string
 	EmailMode     string
@@ -21,6 +22,7 @@ type Config struct {
 
 func LoadConfig() (Config, error) {
 	cfg := Config{
+		ImportDir:     os.Getenv("IMPORT_DIR"),
 		ContentDir:    envOr("CONTENT_DIR", "data/content"),
 		Address:       envOr("ADDRESS", ":8080"),
 		DatabasePath:  envOr("DATABASE_PATH", "data/practice.db"),

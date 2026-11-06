@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
+import { AccountImports } from './AccountImports';
 import { LinearStatistics, ReleaseDetails } from './LinearStatistics';
 import { LibrarySearch, SearchText, defaultSearchScope, type SearchScope } from './LibrarySearch';
 import { readRoute, useTrainingNavigation } from './navigation';
@@ -110,7 +111,7 @@ function AccountMenu({ user, onLogout }: { user: AuthUser; onLogout: () => Promi
   </div>{settingsOpen && <Modal eyebrow="Preferences" title="Settings" className="settings-modal" onClose={() => setSettingsOpen(false)}>
     <div className="settings-options">
       <label><span><strong>Collapse the top panel</strong><small>By default when opening a question on mobile</small></span><input type="checkbox" role="switch" checked={preferences.collapseMobileHeader} onChange={e => update('collapseMobileHeader', e.target.checked)} /></label>
-    </div><p className="settings-note">Settings are saved in this browser.</p>
+    </div><p className="settings-note">Display settings are saved in this browser.</p><AccountImports />
   </Modal>}</>;
 }
 
@@ -554,6 +555,8 @@ function TrainerApp() {
   const {route,navigate}=useTrainingNavigation();
   const [library,setLibrary]=useState<LibraryData|null>(null);
   const [loadError,setLoadError]=useState('');
+  const [libraryRevision,setLibraryRevision]=useState(0);
+  useEffect(()=>{const refresh=()=>setLibraryRevision(value=>value+1);window.addEventListener('library-imported',refresh);return()=>window.removeEventListener('library-imported',refresh);},[]);
   const [libraryView,setLibraryView]=useState<LibraryView>(()=>window.history.state?.libraryView??{search:'',expanded:[],scrollTop:0});
   const home=route.screen==='home';
   useEffect(()=>{
@@ -566,7 +569,7 @@ function TrainerApp() {
       if(!response.ok)throw Error();return response.json() as Promise<LibraryData>;
     }).then(setLibrary).catch(()=>{if(!controller.signal.aborted)setLoadError('Could not load topics. Refresh the page.');});
     return()=>controller.abort();
-  },[]);
+  },[libraryRevision]);
   useEffect(()=>{
     const restore=(event:PopStateEvent)=>{
       const saved=event.state?.libraryView;

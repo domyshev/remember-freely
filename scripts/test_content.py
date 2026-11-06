@@ -286,6 +286,32 @@ class ContentTests(unittest.TestCase):
         self.assertEqual((self.store / 'CURRENT').read_text().strip(), result['snapshot'])
         self.assertIn('warning', result)
 
+    def test_account_namespaces_preserve_updates_and_isolate_internal_ids(self):
+        self.install()
+        archive = self.root / 'pack.zip'
+        alice = content.install(archive, self.root / 'alice-store', self.root / 'alice-report.json', 'alice')
+        bob = content.install(archive, self.root / 'bob-store', self.root / 'bob-report.json', 'bob')
+        self.assertNotEqual(alice['report']['pack']['internal_id'], bob['report']['pack']['internal_id'])
+        self.assertTrue(set(q['internal_id'] for q in alice['report']['questions']).isdisjoint(q['internal_id'] for q in bob['report']['questions']))
+        repeat = content.install(archive, self.root / 'alice-store', self.root / 'alice-repeat.json', 'alice')
+        self.assertEqual(alice['snapshot'], repeat['snapshot'])
+        self.assertEqual(repeat['report']['counts']['questions']['unchanged'], 3)
+
+    def test_normalized_image_expansion_cannot_create_an_oversized_pack(self):
+        self.pack['questions'][0]['images'] = ['images/shared.jpg']
+        self.pack['questions'][1]['images'] = ['images/shared.jpg']
+        (self.source / 'images').mkdir()
+        (self.source / 'images/shared.jpg').write_bytes(b'\xff\xd8\xffexample')
+        self.write()
+        files = content.read_files(self.source)
+        expanded = content.normalize(files)
+        limit = sum(map(len, expanded.values())) - 1
+        # Original files fit; expanding a shared image and normalizing IDs does not.
+        self.assertLess(sum(map(len, files.values())), limit)
+        with mock.patch.object(content, 'MAX_TOTAL', limit), self.assertRaises(content.ImportFailure):
+            self.install()
+        self.assertFalse((self.store / 'CURRENT').exists())
+
     def test_user_topic_root_cannot_collide_with_pack_root(self):
         self.pack['topics'].append({'id': 'root', 'title': 'Collision'})
         self.install()

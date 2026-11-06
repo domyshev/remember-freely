@@ -28,14 +28,16 @@ import (
 const sessionCookie = "practice_session"
 
 type App struct {
-	cfg     Config
-	content contentFiles
-	assets  map[string][]byte
-	images  map[string][]string
-	db      *sql.DB
-	logger  *slog.Logger
-	email   EmailSender
-	mux     *http.ServeMux
+	cfg      Config
+	content  contentFiles
+	assets   map[string][]byte
+	images   map[string][]string
+	db       *sql.DB
+	logger   *slog.Logger
+	email    EmailSender
+	accounts *accountContent
+	imports  *importControl
+	mux      *http.ServeMux
 }
 
 type user struct {
@@ -78,6 +80,20 @@ func New(cfg Config, logger *slog.Logger) (*App, error) {
 	for _, question := range bank {
 		application.images[question.ID] = question.Images
 	}
+	application.accounts = &accountContent{views: map[string]cachedAccount{}}
+	application.imports = &importControl{slots: make(chan struct{}, 2), busy: map[string]bool{}}
+	if _, err := db.Exec(importSchema); err != nil {
+		db.Close()
+		return nil, err
+	}
+	if _, err := db.Exec(`UPDATE uploads SET status='interrupted' WHERE status IN ('uploading','processing')`); err != nil {
+		db.Close()
+		return nil, err
+	}
+	if err := os.RemoveAll(filepath.Join(application.importRoot(), "pending")); err != nil {
+		db.Close()
+		return nil, err
+	}
 	application.routes()
 	return application, nil
 }
@@ -89,24 +105,25 @@ func (app *App) Handler() http.Handler {
 }
 
 func (app *App) routes() {
+	app.importRoutes()
 	app.mux.HandleFunc("GET /api/health", app.health)
-	app.mux.Handle("GET /api/library", app.requireUser(http.HandlerFunc(app.library)))
-	app.mux.Handle("GET /content-assets/", app.requireUser(http.HandlerFunc(app.contentAsset)))
+	app.mux.Handle("GET /api/library", app.accountHandler(func(view *App) http.HandlerFunc { return view.library }))
+	app.mux.Handle("GET /content-assets/", app.accountHandler(func(view *App) http.HandlerFunc { return view.contentAsset }))
 	app.mux.HandleFunc("GET /api/releases", app.releases)
-	app.mux.Handle("GET /api/statistics/linear", app.requireUser(http.HandlerFunc(app.linearStatistics)))
-	app.mux.Handle("GET /api/statistics/topics", app.requireUser(http.HandlerFunc(app.topicStatistics)))
+	app.mux.Handle("GET /api/statistics/linear", app.accountHandler(func(view *App) http.HandlerFunc { return view.linearStatistics }))
+	app.mux.Handle("GET /api/statistics/topics", app.accountHandler(func(view *App) http.HandlerFunc { return view.topicStatistics }))
 	app.mux.HandleFunc("POST /api/auth/request-code", app.requestCode)
 	app.mux.HandleFunc("POST /api/auth/verify-code", app.verifyCode)
 	app.mux.Handle("GET /api/auth/me", app.requireUser(http.HandlerFunc(app.me)))
 	app.mux.Handle("POST /api/auth/logout", app.requireUser(http.HandlerFunc(app.logout)))
-	app.mux.Handle("GET /api/questions/progress", app.requireUser(http.HandlerFunc(app.questionKnowledge)))
-	app.mux.Handle("GET /api/topics/progress", app.requireUser(http.HandlerFunc(app.topicSummaries)))
-	app.mux.Handle("GET /api/topics/{topicID}", app.requireUser(http.HandlerFunc(app.topic)))
-	app.mux.Handle("POST /api/topics/{topicID}/answers", app.requireUser(http.HandlerFunc(app.answerTopic)))
-	app.mux.Handle("POST /api/topics/{topicID}/new", app.requireUser(http.HandlerFunc(app.startNewTopicQuestions)))
-	app.mux.Handle("POST /api/topics/{topicID}/error-reviews", app.requireUser(http.HandlerFunc(app.startTopicErrorReview)))
-	app.mux.Handle("POST /api/topics/{topicID}/reviews/{runID}", app.requireUser(http.HandlerFunc(app.startTopicReview)))
-	app.mux.Handle("POST /api/topics/{topicID}/reset", app.requireUser(http.HandlerFunc(app.resetTopic)))
+	app.mux.Handle("GET /api/questions/progress", app.accountHandler(func(view *App) http.HandlerFunc { return view.questionKnowledge }))
+	app.mux.Handle("GET /api/topics/progress", app.accountHandler(func(view *App) http.HandlerFunc { return view.topicSummaries }))
+	app.mux.Handle("GET /api/topics/{topicID}", app.accountHandler(func(view *App) http.HandlerFunc { return view.topic }))
+	app.mux.Handle("POST /api/topics/{topicID}/answers", app.accountHandler(func(view *App) http.HandlerFunc { return view.answerTopic }))
+	app.mux.Handle("POST /api/topics/{topicID}/new", app.accountHandler(func(view *App) http.HandlerFunc { return view.startNewTopicQuestions }))
+	app.mux.Handle("POST /api/topics/{topicID}/error-reviews", app.accountHandler(func(view *App) http.HandlerFunc { return view.startTopicErrorReview }))
+	app.mux.Handle("POST /api/topics/{topicID}/reviews/{runID}", app.accountHandler(func(view *App) http.HandlerFunc { return view.startTopicReview }))
+	app.mux.Handle("POST /api/topics/{topicID}/reset", app.accountHandler(func(view *App) http.HandlerFunc { return view.resetTopic }))
 
 	app.mux.HandleFunc("GET /api/", func(w http.ResponseWriter, r *http.Request) {
 		app.writeError(w, http.StatusNotFound, "Endpoint not found")

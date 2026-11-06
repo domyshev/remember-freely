@@ -95,27 +95,20 @@ func (app *App) loadTopicQuestion(ref topicReference) (topicQuestion, error) {
 		return q, err
 	}
 	q.Help = map[string]string{"en": en, "es": es, "ru": ru}
-	rows, err := app.db.Query(`SELECT text,correct FROM content_answers WHERE content_id=?`, ref.CanonicalID)
+	rows, err := app.db.Query(`SELECT letter,text,correct FROM content_answers WHERE content_id=? ORDER BY letter`, ref.CanonicalID)
 	if err != nil {
 		return q, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var a topicAnswer
-		if err := rows.Scan(&a.Text, &a.Correct); err != nil {
+		if err := rows.Scan(&a.Letter, &a.Text, &a.Correct); err != nil {
 			return q, err
 		}
 		q.Answers = append(q.Answers, a)
 	}
 	if err := rows.Err(); err != nil {
 		return q, err
-	}
-	// Choices use a stable text-based order.
-	sort.Slice(q.Answers, func(i, j int) bool {
-		return normalizeTopicText(q.Answers[i].Text) < normalizeTopicText(q.Answers[j].Text)
-	})
-	for i := range q.Answers {
-		q.Answers[i].Letter = string(rune('A' + i))
 	}
 	return q, nil
 }
