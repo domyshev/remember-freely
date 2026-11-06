@@ -4,6 +4,21 @@ Practice your own question packs by topic, track progress and review mistakes in
 
 The application ships with an empty library. Question packs and their images are installed separately, without rebuilding the application. The three independently authored questions in `examples/starter` demonstrate the format and are not installed automatically.
 
+## Application and customer data boundary
+
+This repository contains the reusable application, documentation, independently
+written examples and synthetic test fixtures. It must not contain customer
+question packs, real learning materials, uploaded ZIPs, images from those packs,
+import reports, source correspondence, user progress or runtime databases.
+Customer content is never embedded in application source code or build artifacts.
+
+Keep authored packs, original archives and returned reports in a separate folder
+or content repository outside this application checkout. Store imported content
+and SQLite in a separate runtime directory or mounted data volume. The importer
+retains normalized educational content and archive/report checksum pairs there;
+this runtime storage is separate from the application's code and Git history.
+Use only independently authored examples or synthetic fixtures in committed tests.
+
 ## Run locally
 
 Requires Node.js 22.13+, Go 1.24+ and Python 3.9+ for content management.
@@ -29,7 +44,8 @@ A pack is a folder or ZIP containing `pack.json` and optional images. To try the
 
 ```bash
 python3 scripts/content.py validate examples/starter
-python3 scripts/content.py import examples/starter
+cd examples/starter && zip -r /tmp/remember-freely-starter.zip pack.json && cd ../..
+python3 scripts/content.py import /tmp/remember-freely-starter.zip --report /tmp/remember-freely-starter-report.json
 ```
 
 Restart the API process and refresh the page. The new pack appears as a top-level section, with its topics underneath. Rebuilding the frontend is unnecessary.
@@ -38,18 +54,25 @@ For your own questions:
 
 ```bash
 python3 scripts/content.py validate /path/to/my-pack.zip
-python3 scripts/content.py import /path/to/my-pack.zip
+python3 scripts/content.py import /path/to/my-pack.zip --report /path/to/import-report.json
 python3 scripts/content.py list
-python3 scripts/content.py export my-pack /path/to/exported-pack.zip
 ```
 
 Use the global `--store` option **before** the command when installing to a different content directory:
 
 ```bash
-python3 scripts/content.py --store /path/to/content import /path/to/my-pack.zip
+python3 scripts/content.py --store /path/to/content import /path/to/my-pack.zip --report /path/to/import-report.json
 ```
 
 Set `CONTENT_DIR` to that same directory before starting the API. The server loads a verified, immutable snapshot at startup. An import does not change an already running server; restart it after a successful import. All signed-in users of an installation can access its installed packs; private per-user packs and browser uploads are not implemented.
+
+Imports accept ZIP files and return a separate JSON report with input-to-internal
+IDs, outcomes and answer-letter mappings. The engine records the SHA-256 of the
+exact input ZIP and the exact report bytes. It retains normalized educational
+content under internal IDs, not the original ZIP, source identifiers, filenames
+or returned report. The uploader keeps the original ZIP, report and any source
+correspondence. Imports are atomic: an invalid archive activates no questions.
+Original-source export is unavailable; back up the content store and SQLite.
 
 Read [the pack format](docs/question-packs.md) for fields, limits, topic organization and update rules. Read [the agent guide](docs/agent-import.md) to delegate pack preparation and import to a coding agent.
 

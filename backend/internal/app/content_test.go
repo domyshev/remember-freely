@@ -1,6 +1,7 @@
 package app
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"image"
@@ -56,9 +57,53 @@ func TestInstalledPackTrainingAssetsAndRestart(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, "images", "sample.png"), picture.Bytes(), 0644); err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command("python3", "../../../scripts/content.py", "--store", store, "import", source)
+	archivePath := filepath.Join(root, "input.zip")
+	archiveFile, err := os.Create(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	archive := zip.NewWriter(archiveFile)
+	for name, contents := range map[string][]byte{"pack.json": data, "images/sample.png": picture.Bytes()} {
+		entry, err := archive.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := entry.Write(contents); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := archive.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := archiveFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reportPath := filepath.Join(root, "report.json")
+	command := exec.Command("python3", "../../../scripts/content.py", "--store", store, "import", archivePath, "--report", reportPath)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("import: %s %v", output, err)
+	}
+	reportData, err := os.ReadFile(reportPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var report struct {
+		Topics []struct {
+			InputID    string `json:"input_id"`
+			InternalID string `json:"internal_id"`
+		} `json:"topics"`
+	}
+	if err := json.Unmarshal(reportData, &report); err != nil {
+		t.Fatal(err)
+	}
+	additionID := ""
+	for _, topic := range report.Topics {
+		if topic.InputID == "addition" {
+			additionID = topic.InternalID
+		}
+	}
+	if additionID == "" {
+		t.Fatal("missing imported topic ID")
 	}
 	cfg := Config{DatabasePath: filepath.Join(root, "trainer.db"), ContentDir: store, StaticDir: t.TempDir(), SessionSecret: "test-secret-with-more-than-24-characters", EmailMode: "log"}
 	application, err := New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
@@ -73,11 +118,11 @@ func TestInstalledPackTrainingAssetsAndRestart(t *testing.T) {
 	if response.Code != 200 || strings.Contains(response.Body.String(), `"correct"`) || strings.Contains(response.Body.String(), `"answers"`) {
 		t.Fatalf("library leaked answer keys: %s", response.Body.String())
 	}
-	_, members, _, err := application.topicMembers("starter:addition")
+	_, members, _, err := application.topicMembers(additionID)
 	if err != nil || len(members) != 2 {
 		t.Fatalf("topic members: %v %v", members, err)
 	}
-	response = request(t, application.Handler(), "GET", "/api/topics/starter:addition", "", cookie)
+	response = request(t, application.Handler(), "GET", "/api/topics/"+additionID, "", cookie)
 	if response.Code != 200 || strings.Contains(response.Body.String(), `"correct"`) {
 		t.Fatalf("topic: %s", response.Body.String())
 	}
@@ -113,7 +158,7 @@ func TestInstalledPackTrainingAssetsAndRestart(t *testing.T) {
 		}
 	}
 	body, _ := json.Marshal(map[string]string{"question_id": question.ID, "selected_letter": letter})
-	if response := request(t, application.Handler(), "POST", "/api/topics/starter:addition/answers", string(body), cookie); response.Code != 200 {
+	if response := request(t, application.Handler(), "POST", "/api/topics/"+additionID+"/answers", string(body), cookie); response.Code != 200 {
 		t.Fatalf("answer failed: %s", response.Body.String())
 	}
 	application.Close()
