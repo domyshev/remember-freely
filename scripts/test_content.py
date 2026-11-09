@@ -40,6 +40,8 @@ class ContentTests(unittest.TestCase):
 
     def test_translations_survive_normalization_and_update_without_changing_ids(self):
         self.install()
+        original_library = json.loads((content.current(self.store) / 'library.json').read_bytes())
+        self.assertTrue(all(not entry['languages'] for entry in original_library['questions']))
         old = json.loads((content.current(self.store) / 'questions.json').read_bytes())
         question = self.pack['questions'][0]
         question['translations'] = {'en': 'What is two plus two?', 'ru': 'Сколько будет два плюс два?'}

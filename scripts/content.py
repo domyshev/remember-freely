@@ -335,8 +335,9 @@ def compile_packs(packs, version):
                 name = f'{cid}_{number}{PurePosixPath(source).suffix}'
                 assets[name] = files[source]
                 image_urls.append(f'/content-assets/{version}/{name}')
-            bank.append({'id': cid, 'question': q['prompt'], 'translations': q.get('translations', {}), 'help': q.get('explanation_translations') or tagged_translations(q.get('explanation', '')) or {'en': q.get('explanation', ''), 'es': '', 'ru': ''}, 'image': image_urls[0] if image_urls else '', 'images': image_urls, 'answers': [{'letter': chr(65 + index), 'text': answer['text'], 'correct': answer['correct'], 'translations': answer.get('translations', {})} for index, answer in enumerate(sorted(q['answers'], key=lambda a: a['id']))]})
-            languages = sorted(set(q.get('translations', {})) | set(bank[-1]['help']) | {language for answer in q['answers'] for language in answer.get('translations', {})})
+            help_translations = q.get('explanation_translations') or tagged_translations(q.get('explanation', ''))
+            bank.append({'id': cid, 'question': q['prompt'], 'translations': q.get('translations', {}), 'help': help_translations or {'en': q.get('explanation', ''), 'es': '', 'ru': ''}, 'image': image_urls[0] if image_urls else '', 'images': image_urls, 'answers': [{'letter': chr(65 + index), 'text': answer['text'], 'correct': answer['correct'], 'translations': answer.get('translations', {})} for index, answer in enumerate(sorted(q['answers'], key=lambda a: a['id']))]})
+            languages = sorted(set(q.get('translations', {})) | set(help_translations) | {language for answer in q['answers'] for language in answer.get('translations', {})})
             entries.append({'languages': languages, 'canonical_id': cid, 'question': q['prompt'], 'question_title': q['prompt'], 'translations': q.get('translations', {}), 'verified': True, 'topic_ids': q['topic_ids']})
     return {'questions.json': json_bytes(sorted(bank, key=lambda q: q['id'])), 'library.json': json_bytes({'nodes': nodes, 'questions': entries})}, assets
 
