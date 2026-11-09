@@ -14,6 +14,7 @@ test('content languages are independent of UI language, preserve multiline text 
  assert.deepEqual(contentWordings('Original',variants,['ru','es']),[{language:'ru',text:variants.ru},{language:'es',text:variants.es}]);
  assert.equal(contentWordings('Original',variants,[]).length,3);
  assert.deepEqual(contentWordings('Original',variants,['fr']),[{text:'Original'}]);
+ assert.deepEqual(contentWordings('',{fr:'Deux paires.'},['en']),[{text:'Deux paires.'}]);
  assert.deepEqual(contentWordings('Unlabeled\ncontent',undefined,['en']),[{text:'Unlabeled\ncontent'}]);
 });
 test('flatten only a single non-leaf root and retain all roots or requested section', () => {

@@ -561,7 +561,7 @@ function TopicTrainer({ topicId, initialQuestion, reviewParent, newQuestions, ru
   const nextPosition = nextUnanswered >= 0 ? nextUnanswered : topic.questions.findIndex((item) => !item.progress);
   const previousPosition = position-1;
   const progress = Math.round(done / total * 100);
-  const help = contentWordings(q.help.en || q.help.ru || q.help.es || '', q.help, preferences.contentLanguages).map(item => item.text).join('\n\n');
+  const help = contentWordings(Object.values(q.help).find(Boolean) || '', q.help, preferences.contentLanguages).map(item => item.text).join('\n\n');
   return <TrainingFrame>
     <button className="library-back topic-back" type="button" disabled={busy} onClick={onBack}>{t("‹ Learning dashboard")}</button>
     <main className="app-shell topic-shell">

@@ -20,7 +20,7 @@ export function contentWordings(text: string, translations: Record<string, strin
   const available = Object.entries(translations ?? {}).filter(([, value]) => value.trim());
   if (!available.length) return [{ text }];
   const selected = languages.length ? languages.flatMap(language => translations?.[language] ? [{ language, text: translations[language] }] : []) : available.map(([language, text]) => ({ language, text }));
-  return selected.length ? selected : [{ text }];
+  return selected.length ? selected : [{ text: text || available[0]?.[1] || '' }];
 }
 export function libraryRoots<T extends { id: string; parent_id: string | null }>(nodes: T[], section: string, hideSingle: boolean): T[] {
   let roots = section && nodes.some(node => node.id === section && !node.parent_id) ? nodes.filter(node => node.id === section) : nodes.filter(node => !node.parent_id);
