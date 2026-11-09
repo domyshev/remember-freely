@@ -128,3 +128,22 @@ docker run --rm -p 127.0.0.1:5050:8080 \
 The container serves the frontend and API on port 8080. The image includes Python 3 for the shared, embedded account importer. Administrator CLI imports can still run on the host against `/app/data/content` and require a container restart; API account imports activate immediately. Preserve the complete shared content store, account-content directory and SQLite database when moving an installation. For HTTPS deployments, set `COOKIE_SECURE=true` and configure a strong session secret and email delivery.
 
 Before upgrading a production database, create a SQLite online backup and verify `PRAGMA quick_check` and `PRAGMA foreign_key_check`. Do not copy only a live database file while WAL mode is active. Deployment is managed separately from this repository.
+
+
+## Tested image releases
+
+Pushes to `main` run all checks, build the production image and publish a
+`web-<commit>` GitHub release containing `web-image.tar.gz` and its SHA-256
+manifest. Pull requests receive checks only. The same tested image is transferred
+between CI jobs; no deployment credentials or runtime data are included.
+
+A separately managed deployment host can pull these public releases, validate
+the exact main commit and manifest, back up SQLite together with content files,
+and replace its container with health checks and rollback. Host provisioning,
+secrets, DNS and deployment scripts belong in the private infrastructure
+repository, not this engine repository. No self-hosted runner access is required.
+
+If the repository variable `DEPLOYMENT_URL` is configured, the release job waits
+for that origin's `/version.json` to identify the exact commit and `/api/health`
+to report healthy. It creates a `deploy-web-<UTC timestamp>-<short commit>` tag
+only after verification. Publishing an image alone is not a deployment success.
