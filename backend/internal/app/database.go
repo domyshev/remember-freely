@@ -96,17 +96,19 @@ CREATE TABLE IF NOT EXISTS imported_answers (
 `
 
 type seedAnswer struct {
-	Letter  string `json:"letter"`
-	Text    string `json:"text"`
-	Correct bool   `json:"correct"`
+	Translations map[string]string `json:"translations,omitempty"`
+	Letter       string            `json:"letter"`
+	Text         string            `json:"text"`
+	Correct      bool              `json:"correct"`
 }
 type seedQuestion struct {
-	ID       string            `json:"id"`
-	Question string            `json:"question"`
-	Help     map[string]string `json:"help"`
-	Images   []string          `json:"images"`
-	Image    string            `json:"image"`
-	Answers  []seedAnswer      `json:"answers"`
+	Translations map[string]string `json:"translations,omitempty"`
+	ID           string            `json:"id"`
+	Question     string            `json:"question"`
+	Help         map[string]string `json:"help"`
+	Images       []string          `json:"images"`
+	Image        string            `json:"image"`
+	Answers      []seedAnswer      `json:"answers"`
 }
 
 func openDatabase(path string, sources ...contentFiles) (*sql.DB, error) {

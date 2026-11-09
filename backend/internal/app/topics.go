@@ -12,10 +12,13 @@ import (
 )
 
 type topicReference struct {
-	CanonicalID   string   `json:"canonical_id"`
-	QuestionTitle string   `json:"question_title,omitempty"`
-	Verified      bool     `json:"verified"`
-	TopicIDs      []string `json:"topic_ids"`
+	Question      string            `json:"question,omitempty"`
+	Languages     []string          `json:"languages,omitempty"`
+	Translations  map[string]string `json:"translations,omitempty"`
+	CanonicalID   string            `json:"canonical_id"`
+	QuestionTitle string            `json:"question_title,omitempty"`
+	Verified      bool              `json:"verified"`
+	TopicIDs      []string          `json:"topic_ids"`
 }
 type topicLibrary struct {
 	Nodes []struct {
@@ -26,9 +29,10 @@ type topicLibrary struct {
 	Questions []topicReference `json:"questions"`
 }
 type topicAnswer struct {
-	Letter  string `json:"letter"`
-	Text    string `json:"text"`
-	Correct bool   `json:"-"`
+	Translations map[string]string `json:"translations,omitempty"`
+	Letter       string            `json:"letter"`
+	Text         string            `json:"text"`
+	Correct      bool              `json:"-"`
 }
 type topicProgress struct {
 	SelectedLetter string `json:"selected_letter"`
@@ -36,6 +40,7 @@ type topicProgress struct {
 	Correct        bool   `json:"correct"`
 }
 type topicQuestion struct {
+	Translations  map[string]string `json:"translations,omitempty"`
 	ID            string            `json:"id"`
 	Number        int               `json:"number"`
 	Question      string            `json:"question"`
@@ -94,7 +99,11 @@ func (app *App) loadTopicQuestion(ref topicReference) (topicQuestion, error) {
 	if err != nil {
 		return q, err
 	}
+	q.Translations = app.wordings[ref.CanonicalID].Translations
 	q.Help = map[string]string{"en": en, "es": es, "ru": ru}
+	if wording := app.wordings[ref.CanonicalID]; len(wording.Help) > 0 {
+		q.Help = wording.Help
+	}
 	rows, err := app.db.Query(`SELECT letter,text,correct FROM content_answers WHERE content_id=? ORDER BY letter`, ref.CanonicalID)
 	if err != nil {
 		return q, err
@@ -104,6 +113,12 @@ func (app *App) loadTopicQuestion(ref topicReference) (topicQuestion, error) {
 		var a topicAnswer
 		if err := rows.Scan(&a.Letter, &a.Text, &a.Correct); err != nil {
 			return q, err
+		}
+		for _, wording := range app.wordings[ref.CanonicalID].Answers {
+			if wording.Letter == a.Letter {
+				a.Translations = wording.Translations
+				break
+			}
 		}
 		q.Answers = append(q.Answers, a)
 	}

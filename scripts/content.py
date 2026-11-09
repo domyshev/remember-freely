@@ -53,6 +53,27 @@ def text(value, label, maximum=20000):
     return value
 
 
+def translations(value):
+    if not isinstance(value, dict) or len(value) > 32:
+        fail('Expected at most 32 language translations')
+    for language, wording in value.items():
+        if not re.fullmatch(r'[a-z]{2,3}(?:-[a-z0-9]{2,8})*', language):
+            fail('Use lowercase BCP 47 language codes')
+        text(wording, 'translation')
+    return value
+
+
+def tagged_translations(value):
+    """Recognize explicitly labeled legacy explanation blocks, never infer a language."""
+    parts = re.split(r'(?m)^\[([A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*)\]\s*\n', value)
+    if len(parts) < 5 or parts[0].strip():
+        return {}
+    result = {parts[index].lower(): parts[index + 1].strip() for index in range(1, len(parts), 2)}
+    if len(result) != (len(parts) - 1) // 2 or any(not value for value in result.values()):
+        return {}
+    return result
+
+
 def identifier(value):
     if not isinstance(value, str) or not ID.fullmatch(value):
         fail(f'Invalid ID: {value!r}; use lowercase letters, digits, dots, hyphens or underscores')
@@ -144,12 +165,14 @@ def validate(files):
     seen = set()
     referenced = {'pack.json'}
     for question in pack['questions']:
-        fields(question, ['id', 'prompt', 'answers', 'topic_ids'], ['explanation', 'images'])
+        fields(question, ['id', 'prompt', 'answers', 'topic_ids'], ['explanation', 'images', 'translations', 'explanation_translations'])
         identifier(question['id'])
         if question['id'] in seen:
             fail(f'Duplicate question: {question["id"]}')
         seen.add(question['id'])
         text(question['prompt'], 'question prompt')
+        translations(question.get('translations', {}))
+        translations(question.get('explanation_translations', {}))
         if 'explanation' in question and question['explanation'] != '':
             text(question['explanation'], 'explanation')
         tags = question['topic_ids']
@@ -161,7 +184,8 @@ def validate(files):
         answer_ids, answer_texts = set(), set()
         correct = 0
         for answer in answers:
-            fields(answer, ['id', 'text', 'correct'])
+            fields(answer, ['id', 'text', 'correct'], ['translations'])
+            translations(answer.get('translations', {}))
             identifier(answer['id'])
             wording = ' '.join(text(answer['text'], 'answer text').split()).casefold()
             if answer['id'] in answer_ids or wording in answer_texts or type(answer['correct']) is not bool:
@@ -231,9 +255,13 @@ def normalize(files, namespace=""):
         cid = canonical(identity, question['id'])
         item = {'id': cid, 'prompt': question['prompt'], 'explanation': question.get('explanation', ''),
                 'topic_ids': [topic_ids[tid] for tid in question['topic_ids']], 'answers': [], 'images': []}
+        for field in ('translations', 'explanation_translations'):
+            if question.get(field):
+                item[field] = question[field]
         for index, answer in enumerate(sorted(question['answers'], key=lambda a: a['id'])):
             item['answers'].append({'id': f'{index:02d}-' + canonical(cid, answer['id']),
-                                    'text': answer['text'], 'correct': answer['correct']})
+                                    'text': answer['text'], 'correct': answer['correct'],
+                                    **({'translations': answer['translations']} if answer.get('translations') else {})})
         for number, image in enumerate(question.get('images', []), 1):
             name = f'images/{cid}_{number}{PurePosixPath(image).suffix}'
             normalized[name] = files[image]
@@ -307,8 +335,9 @@ def compile_packs(packs, version):
                 name = f'{cid}_{number}{PurePosixPath(source).suffix}'
                 assets[name] = files[source]
                 image_urls.append(f'/content-assets/{version}/{name}')
-            bank.append({'id': cid, 'question': q['prompt'], 'help': {'en': q.get('explanation', ''), 'es': '', 'ru': ''}, 'image': image_urls[0] if image_urls else '', 'images': image_urls, 'answers': [{'letter': chr(65 + index), 'text': answer['text'], 'correct': answer['correct']} for index, answer in enumerate(sorted(q['answers'], key=lambda a: a['id']))]})
-            entries.append({'canonical_id': cid, 'question': q['prompt'], 'question_title': q['prompt'], 'verified': True, 'topic_ids': q['topic_ids']})
+            bank.append({'id': cid, 'question': q['prompt'], 'translations': q.get('translations', {}), 'help': q.get('explanation_translations') or tagged_translations(q.get('explanation', '')) or {'en': q.get('explanation', ''), 'es': '', 'ru': ''}, 'image': image_urls[0] if image_urls else '', 'images': image_urls, 'answers': [{'letter': chr(65 + index), 'text': answer['text'], 'correct': answer['correct'], 'translations': answer.get('translations', {})} for index, answer in enumerate(sorted(q['answers'], key=lambda a: a['id']))]})
+            languages = sorted(set(q.get('translations', {})) | set(bank[-1]['help']) | {language for answer in q['answers'] for language in answer.get('translations', {})})
+            entries.append({'languages': languages, 'canonical_id': cid, 'question': q['prompt'], 'question_title': q['prompt'], 'translations': q.get('translations', {}), 'verified': True, 'topic_ids': q['topic_ids']})
     return {'questions.json': json_bytes(sorted(bank, key=lambda q: q['id'])), 'library.json': json_bytes({'nodes': nodes, 'questions': entries})}, assets
 
 

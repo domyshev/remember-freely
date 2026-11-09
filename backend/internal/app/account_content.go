@@ -68,6 +68,18 @@ func (app *App) accountView(id string) (*App, error) {
 	}
 	view := *app
 	view.content, view.assets, view.images = merged, combined, images
+	raw, err := merged.ReadFile("questions.json")
+	if err != nil {
+		return nil, err
+	}
+	var bank []seedQuestion
+	if err := json.Unmarshal(raw, &bank); err != nil {
+		return nil, err
+	}
+	view.wordings = map[string]seedQuestion{}
+	for _, q := range bank {
+		view.wordings[q.ID] = q
+	}
 	// Keep a bounded cache; active request views remain immutable after eviction.
 	if len(app.accounts.views) >= 4 {
 		for key := range app.accounts.views {

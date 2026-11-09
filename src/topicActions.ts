@@ -19,27 +19,28 @@ export function topicReviewState<T extends ReviewRun>(runs:T[]) {
 type ContinuationProgress={remaining:number;new_count:number;total:number;answered:number;next_question:number};
 const questions=(count:number)=>`${count} question${count===1?'':'s'}`;
 
-export function topicErrorLabel(count:number) {return `${questions(count)} to review`;}
+type Translator = (text:string, values?:Record<string,string|number>)=>string;
+export function topicErrorLabel(count:number, t?:Translator) {return t ? t('{count} questions to review', {count}) : `${questions(count)} to review`;}
 
-export function topicContinuation(progress:ContinuationProgress) {
+export function topicContinuation(progress:ContinuationProgress, t?:Translator) {
  const existing=Math.max(0,progress.remaining);
  const added=Math.max(0,progress.new_count);
  const remaining=existing+added;
  if(!remaining)return {
   target:'repeat' as const,
-  label:'Topic completed',
-  tooltip:`You have answered all ${questions(progress.total)}. "Practice topic again" starts a new run. Previous results remain in your history.`,
+  label:t ? t('Topic completed') : 'Topic completed',
+  tooltip:t ? t('All {total} questions answered. Start a new run to practice again; previous results stay in history.', {total:progress.total}) : `You have answered all ${questions(progress.total)}. "Practice topic again" starts a new run. Previous results remain in your history.`,
  };
  if(!existing&&added)return {
   target:'new' as const,
-  label:`Topic completed · ${added} new question${added===1?'':'s'}`,
-  tooltip:`You have completed this topic. ${questions(added)} added. "Practice new questions" opens only the new questions; previous results are preserved.`,
+  label:t ? t('Topic completed · {added} new questions', {added}) : `Topic completed · ${added} new question${added===1?'':'s'}`,
+  tooltip:t ? t('Practice {added} new questions separately; previous results are preserved.', {added}) : `You have completed this topic. ${questions(added)} added. "Practice new questions" opens only the new questions; previous results are preserved.`,
  };
  const totalSuffix=remaining===progress.total?'':` of ${progress.total}`;
  return {
   target:'main' as const,
-  label:added?`${remaining}${totalSuffix} remaining, including ${added} new`:`${questions(remaining)}${totalSuffix} remaining`,
-  tooltip:`Unanswered: ${questions(remaining)} of ${progress.total}. Continue from question ${progress.next_question}; answered questions are skipped.${added?` Finish the remaining questions in the main run (${existing}), then practice the new questions (${added}) in a separate batch with saved statistics.`:''}`,
+  label:t ? t('{remaining} of {total} remaining · {added} new', {remaining,total:progress.total,added}) : added?`${remaining}${totalSuffix} remaining, including ${added} new`:`${questions(remaining)}${totalSuffix} remaining`,
+  tooltip:t ? t('Unanswered: {remaining} of {total}. Continue from question {next}; answered questions are skipped. New questions can be practiced separately.', {remaining,total:progress.total,next:progress.next_question}) : `Unanswered: ${questions(remaining)} of ${progress.total}. Continue from question ${progress.next_question}; answered questions are skipped.${added?` Finish the remaining questions in the main run (${existing}), then practice the new questions (${added}) in a separate batch with saved statistics.`:''}`,
  };
 }
 

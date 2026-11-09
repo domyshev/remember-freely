@@ -32,6 +32,7 @@ type App struct {
 	content  contentFiles
 	assets   map[string][]byte
 	images   map[string][]string
+	wordings map[string]seedQuestion
 	db       *sql.DB
 	logger   *slog.Logger
 	email    EmailSender
@@ -77,8 +78,10 @@ func New(cfg Config, logger *slog.Logger) (*App, error) {
 		return nil, err
 	}
 	application.images = map[string][]string{}
+	application.wordings = map[string]seedQuestion{}
 	for _, question := range bank {
 		application.images[question.ID] = question.Images
+		application.wordings[question.ID] = question
 	}
 	application.accounts = &accountContent{views: map[string]cachedAccount{}}
 	application.imports = &importControl{slots: make(chan struct{}, 2), busy: map[string]bool{}}

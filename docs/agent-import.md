@@ -124,3 +124,15 @@ refresh the app and check topics, images and sample questions. Do not restart
 on rejection. Report the counts, checksums, outcome and whether a restart was
 performed. Keep failed reports too; correct the input and use a new report path
 for each attempt.
+
+## Preparing multilingual packs
+
+Use the optional `translations` objects on questions and answers, plus
+`explanation_translations` on questions, as described in question-packs.md.
+Supply only translations actually present in the material or explicitly approved
+by the uploader. Never infer languages merely by splitting arbitrary multiline
+text. Keep original wording, correctness and stable identifiers when adding
+translations to an already installed pack; changing only translations preserves
+answer history. Validate the new ZIP and retain the returned report separately.
+Language choices do not translate topic titles or create translated copies of a
+question. One question keeps one identity across every selected language.

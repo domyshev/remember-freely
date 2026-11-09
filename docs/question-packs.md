@@ -132,3 +132,43 @@ into those stores are rejected. Back them up, retain original source ZIPs and
 use a fresh content store for this storage format. Existing progress/topic IDs
 from such an installation require an explicit migration; never discard them.
 See [agent-import.md](agent-import.md) for ZIP construction and report handling.
+
+## Translations
+
+Existing packs remain valid. A question can optionally contain `translations`
+for its prompt and `explanation_translations` for its explanation. Each answer
+can optionally contain `translations` for its wording. Values are objects mapping
+lowercase language codes (for example `en`, `ru`, `es`, `pt-br`) to nonempty plain
+text strings, with at most 32 languages per object. Codes follow the supported
+lowercase BCP 47 subset: 2–3 letters followed by optional 2–8 character subtags.
+Translations have the same 20,000-character limit as other question text.
+
+```json
+{
+  "id": "two-plus-two",
+  "prompt": "What is 2 + 2?",
+  "translations": {"en": "What is 2 + 2?", "ru": "Сколько будет 2 + 2?"},
+  "explanation": "Add two pairs.",
+  "explanation_translations": {"en": "Add two pairs.", "ru": "Сложите две пары."},
+  "topic_ids": ["addition"],
+  "answers": [
+    {"id": "four", "text": "Four", "correct": true, "translations": {"en": "Four", "ru": "Четыре"}},
+    {"id": "five", "text": "Five", "correct": false, "translations": {"en": "Five", "ru": "Пять"}}
+  ]
+}
+```
+
+The interface language and material languages are independent. An empty language
+selection means all available translations. Selected languages are shown in
+selection order; if none exist for a field, its original text is displayed.
+Languages are discovered from question, answer and explanation metadata. Topic
+names remain as authored. No translation is generated or inferred from newlines.
+Explicit legacy explanation blocks beginning with `[ES]`, `[EN]`, etc. on their
+own lines are recognized when there are at least two distinct labeled blocks;
+new packs should use `explanation_translations` instead.
+
+To add or correct translations, preserve pack/question/topic/answer IDs and the
+original answer `text` and `correct` fields. Translations may be updated without
+changing question identity or saved answer history. Re-import the updated ZIP
+and retain its new report. Existing packs without language labels continue to
+show their original content until the uploader supplies an updated pack.

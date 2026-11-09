@@ -895,3 +895,17 @@ button { font:inherit; }
 .created-api-key { background: #eef7ff; }
 .account-imports progress { display: block; width: 100%; margin: 8px 0; }
 .api-endpoint { overflow-wrap: anywhere; }
+
+.question-wordings { white-space:pre-wrap; }
+.question-wording { display:block; }
+.question-wording + .question-wording { margin-top:.45em; }
+.settings-options select,.section-picker select { max-width:52%; border:1px solid #b1c4d4; border-radius:8px; padding:8px; background:white; color:var(--ink); font:inherit; }
+.section-picker { display:flex; align-items:center; gap:12px; margin:12px 0; }
+@media(max-width:600px) { .settings-options label { flex-wrap:wrap; } .settings-options select { max-width:100%; width:100%; } }
+
+.content-language-settings { margin:16px 0; padding:12px; border:1px solid #dbe6ef; border-radius:8px; }
+.content-language-settings legend { font-weight:700; }
+.content-language-settings p { font-size:13px; color:var(--muted); }
+.settings-options .content-language-settings label { display:flex; justify-content:flex-start; gap:10px; border:0; padding:8px 0; }
+.settings-options .content-language-settings input { appearance:auto; width:18px; height:18px; border-radius:3px; }
+.settings-options .content-language-settings input::after { display:none; }

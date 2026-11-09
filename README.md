@@ -34,7 +34,7 @@ In another terminal:
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. The interface is in English; question and explanation text can be written in any language. In local log mode, login codes appear in the API console.
+Open `http://127.0.0.1:5173`. The interface defaults to English; Russian is available in Settings. Question and explanation text can be written in any language. In local log mode, login codes appear in the API console.
 
 See `.env.example` for supported settings. Export environment variables through your shell or process manager; the server does not automatically load `.env` files. SQLite defaults to `data/practice.db`; content defaults to `data/content`. Both are ignored by Git. Use a fresh database for this application.
 
@@ -147,3 +147,18 @@ If the repository variable `DEPLOYMENT_URL` is configured, the release job waits
 for that origin's `/version.json` to identify the exact commit and `/api/health`
 to report healthy. It creates a `deploy-web-<UTC timestamp>-<short commit>` tag
 only after verification. Publishing an image alone is not a deployment success.
+
+## Display and language preferences
+
+Settings supports English (default) and Russian interface labels, an independent
+multi-language selection for questions, answers and explanations, a default root
+section, and an option to hide a single visible root section (enabled by default).
+The dashboard can still switch to all sections when multiple packs are installed.
+These preferences are saved in this browser, not synchronized between devices.
+Section preferences change navigation only; question identity and progress remain
+unchanged. A missing preferred section falls back to all available sections.
+
+Content languages come from explicitly labeled translations in imported packs;
+there is no automatic translation or language detection. Unlabeled content and
+missing selected translations fall back to the original wording. See
+[question-packs.md](docs/question-packs.md#translations) for the optional fields.

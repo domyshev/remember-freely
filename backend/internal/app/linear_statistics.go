@@ -11,24 +11,26 @@ import (
 )
 
 type linearAnswer struct {
-	Letter   string `json:"letter"`
-	Text     string `json:"text"`
-	Correct  bool   `json:"correct"`
-	Selected bool   `json:"selected"`
+	Translations map[string]string `json:"translations,omitempty"`
+	Letter       string            `json:"letter"`
+	Text         string            `json:"text"`
+	Correct      bool              `json:"correct"`
+	Selected     bool              `json:"selected"`
 }
 type linearEvent struct {
-	ID        string            `json:"id"`
-	ContentID string            `json:"content_id"`
-	Topic     string            `json:"topic"`
-	At        string            `json:"answered_at"`
-	Correct   bool              `json:"correct"`
-	Mode      string            `json:"mode"`
-	Question  string            `json:"question"`
-	Image     string            `json:"image_url"`
-	Answers   []linearAnswer    `json:"answers"`
-	Help      map[string]string `json:"help"`
-	selected  string
-	topicID   string
+	Translations map[string]string `json:"translations,omitempty"`
+	ID           string            `json:"id"`
+	ContentID    string            `json:"content_id"`
+	Topic        string            `json:"topic"`
+	At           string            `json:"answered_at"`
+	Correct      bool              `json:"correct"`
+	Mode         string            `json:"mode"`
+	Question     string            `json:"question"`
+	Image        string            `json:"image_url"`
+	Answers      []linearAnswer    `json:"answers"`
+	Help         map[string]string `json:"help"`
+	selected     string
+	topicID      string
 }
 
 const statisticsEvents = `WITH events AS (
@@ -147,11 +149,12 @@ func (app *App) linearStatistics(w http.ResponseWriter, r *http.Request) {
 			cache[e.ContentID] = q
 		}
 		e.Question = q.Question
+		e.Translations = q.Translations
 		e.Image = q.Image
 		e.Help = q.Help
 		e.Answers = []linearAnswer{}
 		for _, a := range q.Answers {
-			e.Answers = append(e.Answers, linearAnswer{a.Letter, a.Text, a.Correct, e.selected != "" && normalizeTopicText(a.Text) == normalizeTopicText(e.selected)})
+			e.Answers = append(e.Answers, linearAnswer{a.Translations, a.Letter, a.Text, a.Correct, e.selected != "" && normalizeTopicText(a.Text) == normalizeTopicText(e.selected)})
 		}
 		e.Topic = statisticsTopicLabel(labels, e.topicID)
 	}

@@ -38,6 +38,40 @@ class ContentTests(unittest.TestCase):
                     output.write(path, path.relative_to(self.source).as_posix())
         return content.install(archive, self.store, self.root / f'report-{self.sequence}.json')
 
+    def test_translations_survive_normalization_and_update_without_changing_ids(self):
+        self.install()
+        old = json.loads((content.current(self.store) / 'questions.json').read_bytes())
+        question = self.pack['questions'][0]
+        question['translations'] = {'en': 'What is two plus two?', 'ru': 'Сколько будет два плюс два?'}
+        question['answers'][0]['translations'] = {'en': 'Four', 'ru': 'Четыре'}
+        question['explanation_translations'] = {'en': 'Two pairs.', 'ru': 'Две пары.'}
+        result = self.install()
+        bank = json.loads((content.current(self.store) / 'questions.json').read_bytes())
+        self.assertEqual([q['id'] for q in old], [q['id'] for q in bank])
+        q = next(q for q in bank if q['translations'])
+        self.assertEqual(q['translations']['ru'], question['translations']['ru'])
+        self.assertEqual(q['help']['ru'], 'Две пары.')
+        self.assertTrue(any(a['translations'].get('ru') == 'Четыре' for a in q['answers']))
+        library = json.loads((content.current(self.store) / 'library.json').read_bytes())
+        self.assertIn('ru', next(entry for entry in library['questions'] if entry['canonical_id'] == q['id'])['languages'])
+        self.assertTrue(result['accepted'])
+
+    def test_invalid_translation_rejects_archive_atomically(self):
+        self.install()
+        pointer = (self.store / 'CURRENT').read_bytes()
+        for value in ({'EN': 'word'}, {'en': ''}, {'en': {'text': 'nested'}}, ['text']):
+            with self.subTest(value=value):
+                self.pack['questions'][0]['translations'] = value
+                with self.assertRaises(ValueError):
+                    self.install()
+                self.assertEqual((self.store / 'CURRENT').read_bytes(), pointer)
+
+    def test_labeled_explanations_are_explicit_not_guessed(self):
+        self.assertEqual(content.tagged_translations('[ES]\nUno\n\n[EN]\nOne'), {'es': 'Uno', 'en': 'One'})
+        self.assertEqual(content.tagged_translations('First line\nSecond line'), {})
+        self.assertEqual(content.tagged_translations('Introduction\n[ES]\nUno\n[EN]\nOne'), {})
+        self.assertEqual(content.tagged_translations('[EN]\nOne\n[EN]\nTwo'), {})
+
     def test_install_and_update_preserve_ids_and_old_snapshots(self):
         first = self.install()
         before = (content.current(self.store) / 'questions.json').read_bytes()

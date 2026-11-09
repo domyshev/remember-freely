@@ -1,3 +1,4 @@
+import { useT } from './Preferences';
 import { useEffect, useRef, useState } from 'react';
 
 type KeyRecord = { id: string; name: string; prefix: string; created_at: string; expires_at: string; revoked_at: string | null; last_used_at: string | null };
@@ -12,6 +13,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 function utc(value: string | null) { return value ? new Date(value).toISOString() : '—'; }
 
 export function AccountImports() {
+  const t = useT();
   const [clock, setClock] = useState(() => Date.now());
   useEffect(() => { const timer = window.setInterval(() => setClock(Date.now()), 30000); return () => window.clearInterval(timer); }, []);
   const [keys, setKeys] = useState<KeyRecord[]>([]);
@@ -93,23 +95,23 @@ export function AccountImports() {
     xhr.send(file);
   }
   return <div className="account-imports">
-    {error && <p role="alert" className="error-message">{error}</p>}
-    <section aria-labelledby="api-keys-title"><h3 id="api-keys-title">API keys</h3><p>Keys can import questions and read your import history. The full key is shown only when created.</p>
-      <form onSubmit={createKey} className="api-key-form"><label>Name<input required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder="My import agent" /></label>
-        <label>Lifetime (days)<input required type="number" min={1} max={365} value={days} onChange={event => setDays(Number(event.target.value))} /></label><button type="submit" className="primary" disabled={busy}>Create key</button></form>
-      {secret && <div className="created-api-key"><p>Copy this key now. It cannot be retrieved later.</p><input aria-label="New API key" readOnly value={secret} autoComplete="off" spellCheck={false} /><div><button type="button" onClick={() => void copySecret()}>{copied ? 'Copied' : 'Copy key'}</button><button type="button" className="secondary" onClick={() => setSecret('')}>Dismiss key</button></div></div>}
-      {keys.length === 0 && <p>No API keys yet.</p>}
-      {keys.map(key => { const status = key.revoked_at ? 'Revoked' : Date.parse(key.expires_at) <= clock ? 'Expired' : 'Active'; return <article className="api-key-row" key={key.id}><strong>{key.name}</strong><code>{key.prefix}…</code><span>{status}</span><small>Expires (UTC): {utc(key.expires_at)}</small><small>Last used (UTC): {utc(key.last_used_at)}</small><div>{status === 'Active' && <button type="button" className="secondary" disabled={busy} onClick={() => void mutateKey(key.id, 'revoke')}>Revoke</button>}<button type="button" className="secondary" disabled={busy} onClick={() => void mutateKey(key.id, 'delete')}>Delete</button></div></article>; })}
+    {error && <p role="alert" className="error-message">{t(error)}</p>}
+    <section aria-labelledby="api-keys-title"><h3 id="api-keys-title">{t("API keys")}</h3><p>{t("Keys can import questions and read your import history. The full key is shown only when created.")}</p>
+      <form onSubmit={createKey} className="api-key-form"><label>{t("Name")}<input required maxLength={80} value={name} onChange={event => setName(event.target.value)} placeholder={t("My import agent")} /></label>
+        <label>{t("Lifetime (days)")}<input required type="number" min={1} max={365} value={days} onChange={event => setDays(Number(event.target.value))} /></label><button type="submit" className="primary" disabled={busy}>{t("Create key")}</button></form>
+      {secret && <div className="created-api-key"><p>{t("Copy this key now. It cannot be retrieved later.")}</p><input aria-label={t("New API key")} readOnly value={secret} autoComplete="off" spellCheck={false} /><div><button type="button" onClick={() => void copySecret()}>{copied ? t("Copied") : t("Copy key")}</button><button type="button" className="secondary" onClick={() => setSecret('')}>{t("Dismiss key")}</button></div></div>}
+      {keys.length === 0 && <p>{t("No API keys yet.")}</p>}
+      {keys.map(key => { const status = key.revoked_at ? 'Revoked' : Date.parse(key.expires_at) <= clock ? 'Expired' : 'Active'; return <article className="api-key-row" key={key.id}><strong>{key.name}</strong><code>{key.prefix}…</code><span>{t(status)}</span><small>{t("Expires (UTC):")}{" "}{utc(key.expires_at)}</small><small>{t("Last used (UTC):")}{" "}{utc(key.last_used_at)}</small><div>{status === 'Active' && <button type="button" className="secondary" disabled={busy} onClick={() => void mutateKey(key.id, 'revoke')}>{t("Revoke")}</button>}<button type="button" className="secondary" disabled={busy} onClick={() => void mutateKey(key.id, 'delete')}>{t("Delete")}</button></div></article>; })}
     </section>
-    <section aria-labelledby="upload-pack-title"><h3 id="upload-pack-title">Import question pack</h3><p>Choose a ZIP up to 64 MiB. Imported questions are private to your account. Keep settings open until you save the returned report; it is not stored on the server.</p><p className="api-endpoint"><code>{endpoint}</code></p>
-      <form onSubmit={startUpload}><label>Question pack ZIP<input required type="file" accept=".zip,application/zip" disabled={uploading} onChange={event => setFile(event.target.files?.[0] || null)} /></label><button type="submit" className="primary" disabled={uploading || !file}>Import ZIP</button></form>
-      <div role="status" aria-live="polite">{phase}{uploading && <><progress aria-label="ZIP upload progress" max={100} value={progress} /><span>{progress === undefined ? 'Uploading…' : `${progress}% uploaded`}</span></>}</div>
-      {download && <div className="import-report-download"><a href={download.url} download={download.filename}>Download JSON report</a><small>Report SHA-256</small><code>{download.sha256}</code></div>}
+    <section aria-labelledby="upload-pack-title"><h3 id="upload-pack-title">{t("Import question pack")}</h3><p>{t("Choose a ZIP up to 64 MiB. Imported questions are private to your account. Keep settings open until you save the returned report; it is not stored on the server.")}</p><p className="api-endpoint"><code>{endpoint}</code></p>
+      <form onSubmit={startUpload}><label>{t("Question pack ZIP")}<input required type="file" accept=".zip,application/zip" disabled={uploading} onChange={event => setFile(event.target.files?.[0] || null)} /></label><button type="submit" className="primary" disabled={uploading || !file}>{t("Import ZIP")}</button></form>
+      <div role="status" aria-live="polite">{t(phase)}{uploading && <><progress aria-label={t("ZIP upload progress")} max={100} value={progress} /><span>{progress === undefined ? t("Uploading…") : t('{progress}% uploaded', {progress})}</span></>}</div>
+      {download && <div className="import-report-download"><a href={download.url} download={download.filename}>{t("Download JSON report")}</a><small>{t("Report SHA-256")}</small><code>{download.sha256}</code></div>}
     </section>
-    <section aria-labelledby="import-history-title"><h3 id="import-history-title">Import history</h3><button type="button" className="secondary" onClick={() => void loadHistory().catch(error => setError(error.message))}>Refresh history</button><p>All times are UTC. ZIP files and reports are not retained.</p>
-      {history.length === 0 && <p>No uploads yet.</p>}
-      {history.map(item => <article key={item.id} className="import-history-row"><strong>{item.status}</strong><small>Upload started: {utc(item.upload_started_at)}</small><small>ZIP received: {utc(item.uploaded_at)}</small><small>Report created: {utc(item.report_created_at)}</small><small>ZIP SHA-256</small><code>{item.archive_sha256 || '—'}</code><small>Report SHA-256</small><code>{item.report_sha256 || '—'}</code><small>{item.size_bytes.toLocaleString()} bytes</small></article>)}
-      {next !== null && <button type="button" className="secondary" onClick={() => void loadHistory(next).catch(error => setError(error.message))}>Load more uploads</button>}
+    <section aria-labelledby="import-history-title"><h3 id="import-history-title">{t("Import history")}</h3><button type="button" className="secondary" onClick={() => void loadHistory().catch(error => setError(error.message))}>{t("Refresh history")}</button><p>{t("All times are UTC. ZIP files and reports are not retained.")}</p>
+      {history.length === 0 && <p>{t("No uploads yet.")}</p>}
+      {history.map(item => <article key={item.id} className="import-history-row"><strong>{t(item.status)}</strong><small>{t("Upload started:")}{" "}{utc(item.upload_started_at)}</small><small>{t("ZIP received:")}{" "}{utc(item.uploaded_at)}</small><small>{t("Report created:")}{" "}{utc(item.report_created_at)}</small><small>{t("ZIP SHA-256")}</small><code>{item.archive_sha256 || '—'}</code><small>{t("Report SHA-256")}</small><code>{item.report_sha256 || '—'}</code><small>{item.size_bytes.toLocaleString()} {" "}{t("bytes")}</small></article>)}
+      {next !== null && <button type="button" className="secondary" onClick={() => void loadHistory(next).catch(error => setError(error.message))}>{t("Load more uploads")}</button>}
     </section>
   </div>;
 }
