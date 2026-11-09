@@ -16,3 +16,5 @@
 - Account API imports must be isolated by owner, including IDs, topics, training, assets and upload history. API keys are import/history credentials only; key administration requires a signed-in session. Store key digests, expose full secrets only on creation, and enforce expiry/revocation before activating an in-flight import.
 - Follow `docs/import-api.md` for account API imports and client-agent usage. Preserve exact report bytes for checksum verification. Keep transient ZIPs/reports only during processing and remove them afterward or during interrupted-job recovery.
 - Activate account content, database records and final history metadata in one SQLite transaction after validating an immutable snapshot. Do not run multiple API writers against the same database/import directory.
+
+- Unless the user explicitly requests otherwise, increment only the patch version (for example 0.2.0 to 0.2.1).

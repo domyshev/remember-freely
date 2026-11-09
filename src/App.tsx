@@ -1,7 +1,8 @@
 import { useT } from './Preferences';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useLayoutEffect, useRef, useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
-import { libraryRoots, contentWordings } from './preferenceModel';
+import { AppearancePreferences } from './Appearance';
+import { libraryRoots, contentWordings, topicLabel } from './preferenceModel';
 import { AccountImports } from './AccountImports';
 import { LinearStatistics, ReleaseDetails } from './LinearStatistics';
 import { LibrarySearch, SearchText, defaultSearchScope, type SearchScope } from './LibrarySearch';
@@ -120,11 +121,12 @@ function AccountMenu({ user, onLogout }: { user: AuthUser; onLogout: () => Promi
     <button ref={trigger} type="button" className="account-menu-trigger" aria-label={t("User menu")} aria-expanded={open} aria-controls="account-menu" onClick={() => setOpen(!open)}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
     </button>
-    {open && <section id="account-menu" className="account-menu-panel" aria-label={t("Account")}><p>{user.email}</p><hr /><button type="button" onClick={() => { setOpen(false); if (readRoute().screen !== 'statistics') { window.history.pushState(null, '', '?screen=statistics'); window.dispatchEvent(new PopStateEvent('popstate')); } }}>{t("Statistics")}</button><button type="button" onClick={() => { setOpen(false); setSettingsOpen(true); }}>{t("Settings")}</button><button type="button" disabled={busy} onClick={signOut}>{busy ? t("Signing out…") : t("Sign out")}</button></section>}
+    {open && <section id="account-menu" className="account-menu-panel" aria-label={t("Account")}><p>{user.email}</p><hr /><AppearancePreferences /><hr /><button type="button" onClick={() => { setOpen(false); if (readRoute().screen !== 'statistics') { window.history.pushState(null, '', '?screen=statistics'); window.dispatchEvent(new PopStateEvent('popstate')); } }}>{t("Statistics")}</button><button type="button" onClick={() => { setOpen(false); setSettingsOpen(true); }}>{t("Settings")}</button><button type="button" disabled={busy} onClick={signOut}>{busy ? t("Signing out…") : t("Sign out")}</button></section>}
   </div>{settingsOpen && <Modal eyebrow={t("Preferences")} title={t("Settings")} className="settings-modal" onClose={() => setSettingsOpen(false)}>
     <div className="settings-options">
-      <label><span><strong>{t("Interface language")}</strong></span><select value={preferences.interfaceLanguage} onChange={e => update('interfaceLanguage', e.target.value === 'ru' ? 'ru' : 'en')}><option value="en">English</option><option value="ru">Русский</option></select></label>
-      <label><span><strong>{t("Default section")}</strong><small>{t("Open this section on the learning dashboard")}</small></span><select value={settingsLibrary.nodes.some(node => node.id === preferences.defaultSection && !node.parent_id) ? preferences.defaultSection : ''} onChange={e => { update('defaultSection', e.target.value); window.dispatchEvent(new Event('default-section-changed')); }}><option value="">{t("All sections")}</option>{settingsLibrary.nodes.filter(node => !node.parent_id).map(node => <option value={node.id} key={node.id}>{node.label}</option>)}</select></label>
+      <label><span><strong>{t("Interface language")}</strong></span><select value={preferences.interfaceLanguage} onChange={e => update('interfaceLanguage', e.target.value === 'ru' || e.target.value === 'es' ? e.target.value : 'en')}><option value="en">English</option><option value="ru">Русский</option><option value="es">Español</option></select></label>
+      <label><span><strong>{t('Topic and subtopic language')}</strong><small>{t('Missing translations use the original title.')}</small></span><select value={preferences.topicLanguage} onChange={e => update('topicLanguage', e.target.value)}><option value="original">{t('Original titles')}</option><option value="interface">{t('Match interface language')}</option>{[...new Set(['en','ru','es', ...settingsLibrary.nodes.flatMap(node => Object.keys(node.translations ?? {})), ...(!['original','interface'].includes(preferences.topicLanguage) ? [preferences.topicLanguage] : [])])].map(code => <option key={code} value={code}>{languageName(code)}</option>)}</select></label>
+      <label><span><strong>{t("Default section")}</strong><small>{t("Open this section on the learning dashboard")}</small></span><select value={settingsLibrary.nodes.some(node => node.id === preferences.defaultSection && !node.parent_id) ? preferences.defaultSection : ''} onChange={e => { update('defaultSection', e.target.value); window.dispatchEvent(new Event('default-section-changed')); }}><option value="">{t("All sections")}</option>{settingsLibrary.nodes.filter(node => !node.parent_id).map(node => <option value={node.id} key={node.id}>{topicLabel(node, preferences.topicLanguage, preferences.interfaceLanguage)}</option>)}</select></label>
       <label><span><strong>{t("Hide a single root section")}</strong><small>{t("Show its topics directly when only one section is visible")}</small></span><input type="checkbox" role="switch" checked={preferences.hideSingleRoot} onChange={e => update('hideSingleRoot', e.target.checked)} /></label>
       <fieldset className="content-language-settings"><legend>{t('Question and answer languages')}</legend><p>{t('Select multiple languages, or show all available translations. Missing translations use the original text.')}</p>
         <label><input type="checkbox" checked={!preferences.contentLanguages.length} onChange={() => update('contentLanguages', [])}/>{t('All available languages')}</label>
@@ -138,6 +140,7 @@ function AccountMenu({ user, onLogout }: { user: AuthUser; onLogout: () => Promi
 
 function LoginScreen({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => void }) {
   const t = useT();
+  const { preferences } = usePreferences();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [step, setStep] = useState<'email' | 'code'>('email');
@@ -175,7 +178,7 @@ function LoginScreen({ onAuthenticated }: { onAuthenticated: (user: AuthUser) =>
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <p className="eyebrow">Remember Freely</p>
+        <p className="eyebrow">{preferences.siteHeading.trim() || "Remember Freely"}</p>
         <h1>{step === 'email' ? t("Sign in or create an account") : t("Enter the code from your email")}</h1>
         <p>{step === 'email' ? t("No password needed. We will email you a one-time code.") : t('We sent a six-digit code to {email}', {email})}</p>
         <form onSubmit={step === 'email' ? requestCode : verifyCode}>
@@ -194,7 +197,7 @@ function LoginScreen({ onAuthenticated }: { onAuthenticated: (user: AuthUser) =>
 }
 
 type LibraryQuestion = { languages?: string[]; translations?: Record<string, string>; canonical_id: string; question: string; question_title?: string; topic_ids: string[]; verified: boolean };
-type TopicNode = { id: string; label: string; parent_id: string | null };
+type TopicNode = { translations?: Record<string,string>; id: string; label: string; parent_id: string | null };
 type LibraryData = { nodes: TopicNode[]; questions: LibraryQuestion[] };
 
 type TopicRun = { review_pending?: number; inherited?: number; kind: 'full' | 'new'; id: number; total: number; answered: number; correct: number; wrong: number; started_at: string; completed_at: string | null; review?: TopicRun; error_reviews?: TopicRun[] };
@@ -236,11 +239,11 @@ function TopicStatistics({ stats, total, onReview }: { stats?: TopicSummary; tot
     onMouseEnter={keepOpen} onMouseLeave={closeSoon} onFocus={keepOpen} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node) && !trigger.current?.contains(event.relatedTarget as Node)) closeSoon(); }}>
     <strong>{t("Run history")}</strong>
     {!stats?.runs.length && <p>{t("No practice runs yet.")}</p>}
-    {stats?.runs.map((run, index) => <section key={run.id}><b>{run.kind === 'new' ? t("New questions") : t('Run {number}', {number: stats.runs.slice(index).filter((item) => item.kind === 'full').length})}</b><time>{new Date(run.started_at).toLocaleString(preferences.interfaceLanguage === 'ru' ? 'ru-RU' : 'en-GB')}</time>
+    {stats?.runs.map((run, index) => <section key={run.id}><b>{run.kind === 'new' ? t("New questions") : t('Run {number}', {number: stats.runs.slice(index).filter((item) => item.kind === 'full').length})}</b><time>{new Date(run.started_at).toLocaleString(preferences.interfaceLanguage === 'ru' ? 'ru-RU' : preferences.interfaceLanguage === 'es' ? 'es-ES' : 'en-GB')}</time>
       <p>{run.completed_at ? t("Completed") : t("In progress")} · {run.answered}/{run.total} · ✓ {run.correct} · × {run.wrong}</p>{!!run.inherited && <p>{t("Previously answered in other topics:")}{" "}{run.inherited}</p>}
-      {run.error_reviews?.map(review=><div key={review.id}><p>{t("Topic mistake review:")}{" "}{review.completed_at?t("completed"):t("in progress")} · {review.answered}/{review.total} · ✓ {review.correct} · × {review.wrong}</p><time>{new Date(review.started_at).toLocaleString(preferences.interfaceLanguage === 'ru' ? 'ru-RU' : 'en-GB')}</time><button type="button" onClick={()=>{setAnchor(null);onReview(-review.id);}}>{t("View mistake review")}</button></div>)}
+      {run.error_reviews?.map(review=><div key={review.id}><p>{t("Topic mistake review:")}{" "}{review.completed_at?t("completed"):t("in progress")} · {review.answered}/{review.total} · ✓ {review.correct} · × {review.wrong}</p><time>{new Date(review.started_at).toLocaleString(preferences.interfaceLanguage === 'ru' ? 'ru-RU' : preferences.interfaceLanguage === 'es' ? 'es-ES' : 'en-GB')}</time><button type="button" onClick={()=>{setAnchor(null);onReview(-review.id);}}>{t("View mistake review")}</button></div>)}
       {run.review ? <><p>{t("Mistake review:")}{" "}{run.review.completed_at ? t("completed") : t("in progress")} · {run.review.answered}/{run.review.total} · ✓ {run.review.correct} · × {run.review.wrong}</p>
-        {run.review.completed_at && <time>{t("Completed:")}{" "}{new Date(run.review.completed_at).toLocaleString(preferences.interfaceLanguage === 'ru' ? 'ru-RU' : 'en-GB')}</time>}<button type="button" onClick={() => { setAnchor(null); onReview(run.id); }}>{run.review.completed_at ? t("View mistake review") : t("Continue mistake review")}</button></>
+        {run.review.completed_at && <time>{t("Completed:")}{" "}{new Date(run.review.completed_at).toLocaleString(preferences.interfaceLanguage === 'ru' ? 'ru-RU' : preferences.interfaceLanguage === 'es' ? 'es-ES' : 'en-GB')}</time>}<button type="button" onClick={() => { setAnchor(null); onReview(run.id); }}>{run.review.completed_at ? t("View mistake review") : t("Continue mistake review")}</button></>
         : run.completed_at && run.wrong > 0 ? <button type="button" onClick={() => { setAnchor(null); onReview(run.id); }}>{t("Review mistakes")}</button> : <p>{run.completed_at ? t("No mistakes") : t("Mistake review is available after completion")}</p>}
     </section>)}
   </div>, document.body)}</>;
@@ -411,10 +414,10 @@ function QuestionLibrary({ library, onOpenTopic, view, onRemember, sectionId, on
   return <main className={`library-page ${sectionId ? 'section-library' : ''} ${returnReady?'':'restoring-library'}`} ref={root} aria-busy={!returnReady}>
     {!returnReady&&<div className="library-restore-message" role="status"><span>{t("Returning to your topic")}</span><QuestionLoader /></div>}
     {!sectionId && <>
-    <header className="library-header"><a href="/" className="library-brand">Remember Freely</a></header>
+    <header className="library-header"><a href="/" className="library-brand">{preferences.siteHeading.trim() || "Remember Freely"}</a></header>
     <section className="library-intro"><h1>{t("Choose a topic to practice")}</h1>
       <div className="library-totals"><span><strong>{visibleQuestions.length}</strong> {" "}{t("questions")}</span><span><strong>{visibleNodes.filter(node=>!visibleNodes.some(child=>child.parent_id===node.id)).length}</strong> {" "}{t("topics")}</span><button className="dashboard-statistics" onClick={()=>{rememberView();onStatistics?.();}}>{t("Statistics ↗")}</button></div>
-      {roots.length > 1 && <label className="section-picker"><span>{t("Section")}</span><select value={selectedRoot?.id ?? ''} onChange={e => setSectionChoice(e.target.value)}><option value="">{t("All sections")}</option>{roots.map(node => <option value={node.id} key={node.id}>{node.label}</option>)}</select></label>}
+      {roots.length > 1 && <label className="section-picker"><span>{t("Section")}</span><select value={selectedRoot?.id ?? ''} onChange={e => setSectionChoice(e.target.value)}><option value="">{t("All sections")}</option>{roots.map(node => <option value={node.id} key={node.id}>{topicLabel(node, preferences.topicLanguage, preferences.interfaceLanguage)}</option>)}</select></label>}
       <LibrarySearch value={search} onChange={setSearch} scope={searchScope} onScope={setSearchScope} container={scroll} resultKey={summaries?'loaded':'loading'}/>
     </section>
     <div className="library-divider">{t("By topic")}{" "}<span>{t("A question can belong to multiple topics")}</span></div>
@@ -493,8 +496,8 @@ function AnswerResult({ correct, letter, onHelp }: { correct: boolean; letter: s
   return <aside className={`feedback anchored-feedback ${correct ? 'success' : 'error'}`} aria-live="polite"><div className="feedback-title"><div className="feedback-outcome"><span aria-hidden="true">{correct ? '✓' : '×'}</span><strong>{correct ? t("Correct") : t('Incorrect · correct answer {letter}', {letter})}</strong></div><div className="feedback-actions"><button type="button" className="feedback-help-button" aria-label={t("Show explanation")} onClick={onHelp}>?</button></div></div></aside>;
 }
 
-function TopicTrainer({ topicId, initialQuestion, reviewParent, newQuestions, runId, path, sectionNavigation, onQuestion, onBack, onFinish }: {
-  topicId: string; initialQuestion?: string; reviewParent?: number; newQuestions?: boolean; runId?: number; path: string; sectionNavigation: React.ReactNode; onQuestion: (question: string, replace?: boolean, runId?: number, reviewParent?: number) => void; onBack: () => void; onFinish: (question: string) => void;
+function TopicTrainer({ topicId, initialQuestion, reviewParent, newQuestions, runId, path, displayTitle, sectionNavigation, onQuestion, onBack, onFinish }: {
+  topicId: string; initialQuestion?: string; reviewParent?: number; newQuestions?: boolean; runId?: number; path: string; displayTitle?: string; sectionNavigation: React.ReactNode; onQuestion: (question: string, replace?: boolean, runId?: number, reviewParent?: number) => void; onBack: () => void; onFinish: (question: string) => void;
 }) {
   const t = useT();
   const { preferences } = usePreferences();
@@ -552,6 +555,7 @@ function TopicTrainer({ topicId, initialQuestion, reviewParent, newQuestions, ru
   }
   const q = topic?.questions[position];
   if (!topic || !q) return error ? <main className="loading error-message"><p role="alert">{t(error)}</p><button className="secondary" onClick={onBack}>{t("Learning dashboard")}</button></main> : <PageLoader />;
+  const title = displayTitle || topic.title;
   const total = topic.questions.length;
   const done = topic.questions.filter((item) => item.progress).length;
   const correct = topic.questions.filter((item) => item.progress?.correct).length;
@@ -566,11 +570,11 @@ function TopicTrainer({ topicId, initialQuestion, reviewParent, newQuestions, ru
     <button className="library-back topic-back" type="button" disabled={busy} onClick={onBack}>{t("‹ Learning dashboard")}</button>
     <main className="app-shell topic-shell">
       <header className="topbar topic-topbar">
-        <div className="title-block"><TopicHeading section={sectionNavigation} title={topic.title} />{filteredRun && <p className="review-mode-label">{reviewParent ? t("Mistake review · correct your answers") : t("New questions · a separate practice run")}</p>}</div>
+        <div className="title-block"><TopicHeading section={sectionNavigation} title={title} />{filteredRun && <p className="review-mode-label">{reviewParent ? t("Mistake review · correct your answers") : t("New questions · a separate practice run")}</p>}</div>
         <div className="header-tools">
           <div className="question-menu-shell topic-menu-shell">
             <button type="button" className="question-menu-trigger" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><span className="question-menu-trigger-copy"><span className="question-menu-trigger-label">{t("Current question")}</span><span className="question-menu-trigger-title">{t("Question")}{" "}{q.number} {" "}{t("of")}{" "}{topic.numbering_total??total}</span></span><span className="question-menu-chevron">⌄</span></button>
-            {menuOpen && <><button className="question-menu-backdrop" aria-label={t("Close question list")} onClick={() => setMenuOpen(false)} /><section className="question-menu-panel topic-menu" aria-label={t('Questions in topic {topic}', {topic: topic.title})}><header><div><div className="menu-topic-heading"><p className="menu-section">{path}</p><div className="menu-theme"><strong>{topic.title}</strong></div></div><p className="topic-summary-line">{t("Total:")}{" "}{total} {" "}{t("· Answered:")}{" "}{done} {" "}{t("· Correct:")}{" "}{correct} {" "}{t("· Incorrect:")}{" "}{done - correct}</p></div><button aria-label={t("Close")} onClick={() => setMenuOpen(false)}>×</button></header><div className="question-menu-list">
+            {menuOpen && <><button className="question-menu-backdrop" aria-label={t("Close question list")} onClick={() => setMenuOpen(false)} /><section className="question-menu-panel topic-menu" aria-label={t('Questions in topic {topic}', {topic: title})}><header><div><div className="menu-topic-heading"><p className="menu-section">{path}</p><div className="menu-theme"><strong>{title}</strong></div></div><p className="topic-summary-line">{t("Total:")}{" "}{total} {" "}{t("· Answered:")}{" "}{done} {" "}{t("· Correct:")}{" "}{correct} {" "}{t("· Incorrect:")}{" "}{done - correct}</p></div><button aria-label={t("Close")} onClick={() => setMenuOpen(false)}>×</button></header><div className="question-menu-list">
               {topic.questions.map((item, index) => <button key={item.id} type="button" className={`topic-menu-question ${index === position ? 'active' : ''}`} onClick={() => { goTo(index); setMenuOpen(false); }}><b>{item.number}</b><span>{item.question_title || item.question.split('\n').filter(Boolean).at(-1)}</span><i>{item.progress ? item.progress.correct ? '✓' : '×' : '·'}</i></button>)}
             </div></section></>}
           </div>
@@ -598,14 +602,16 @@ function TopicTrainer({ topicId, initialQuestion, reviewParent, newQuestions, ru
         </div>
       </section>
     </main>
-    {helpOpen && <Modal eyebrow={`${topic.title} · ${t('question {number}', {number: q.number})}`} title={t("Explanation")} onClose={() => setHelpOpen(false)}><HelpContent text={help || t("No explanation is available for this question yet.")} /></Modal>}
+    {helpOpen && <Modal eyebrow={`${title} · ${t('question {number}', {number: q.number})}`} title={t("Explanation")} onClose={() => setHelpOpen(false)}><HelpContent text={help || t("No explanation is available for this question yet.")} /></Modal>}
   </TrainingFrame>;
 }
 
 function TrainerApp() {
   const t = useT();
+  const { preferences } = usePreferences();
   const {route,navigate}=useTrainingNavigation();
-  const [library,setLibrary]=useState<LibraryData|null>(null);
+  const [sourceLibrary,setLibrary]=useState<LibraryData|null>(null);
+  const library = useMemo(() => sourceLibrary ? { ...sourceLibrary, nodes: sourceLibrary.nodes.map(node => ({...node, label: topicLabel(node, preferences.topicLanguage, preferences.interfaceLanguage)})) } : null, [sourceLibrary, preferences.topicLanguage, preferences.interfaceLanguage]);
   const [loadError,setLoadError]=useState('');
   const [libraryRevision,setLibraryRevision]=useState(0);
   useEffect(()=>{const refresh=()=>setLibraryRevision(value=>value+1);window.addEventListener('library-imported',refresh);return()=>window.removeEventListener('library-imported',refresh);},[]);
@@ -651,7 +657,7 @@ function TrainerApp() {
     const node=library.nodes.find(item=>item.id===route.id);
     const ancestors:string[]=[];let parent=node?.parent_id;
     while(parent){const ancestor=library.nodes.find(item=>item.id===parent);if(!ancestor)break;ancestors.unshift(ancestor.label);parent=ancestor.parent_id;}
-    return <TopicTrainer key={`${route.id}:${route.reviewParent??(route.newQuestions?'new':'full')}`} topicId={route.id} initialQuestion={route.question} reviewParent={route.reviewParent} newQuestions={route.newQuestions} runId={route.runId} path={ancestors.join(' / ')} onQuestion={onQuestion} sectionNavigation={<SectionNavigator library={library} sectionId={node?.parent_id??route.id} onOpenTopic={openTopic}/>} onBack={()=>returnToLibrary(route.id)} onFinish={()=>returnToLibrary(route.id)}/>;
+    return <TopicTrainer key={`${route.id}:${route.reviewParent??(route.newQuestions?'new':'full')}`} topicId={route.id} displayTitle={node?.label} initialQuestion={route.question} reviewParent={route.reviewParent} newQuestions={route.newQuestions} runId={route.runId} path={ancestors.join(' / ')} onQuestion={onQuestion} sectionNavigation={<SectionNavigator library={library} sectionId={node?.parent_id??route.id} onOpenTopic={openTopic}/>} onBack={()=>returnToLibrary(route.id)} onFinish={()=>returnToLibrary(route.id)}/>;
   }
   return <QuestionLibrary library={library} view={libraryView} onRemember={remember} onOpenTopic={openTopic} onStatistics={()=>navigate({screen:'statistics'})}/>;
 }

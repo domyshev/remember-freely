@@ -22,9 +22,10 @@ type topicReference struct {
 }
 type topicLibrary struct {
 	Nodes []struct {
-		ID     string  `json:"id"`
-		Label  string  `json:"label"`
-		Parent *string `json:"parent_id"`
+		Translations map[string]string `json:"translations,omitempty"`
+		ID           string            `json:"id"`
+		Label        string            `json:"label"`
+		Parent       *string           `json:"parent_id"`
 	} `json:"nodes"`
 	Questions []topicReference `json:"questions"`
 }

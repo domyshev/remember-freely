@@ -68,6 +68,22 @@ class ContentTests(unittest.TestCase):
                     self.install()
                 self.assertEqual((self.store / 'CURRENT').read_bytes(), pointer)
 
+    def test_pack_and_topic_title_translations_preserve_ids_and_validate(self):
+        self.install()
+        before = json.loads((content.current(self.store) / 'library.json').read_bytes())
+        self.pack['translations'] = {'es': 'Ejemplos', 'ru': 'Примеры'}
+        self.pack['topics'][0]['translations'] = {'es': 'Números', 'ru': 'Числа'}
+        self.install()
+        after = json.loads((content.current(self.store) / 'library.json').read_bytes())
+        self.assertEqual([n['id'] for n in before['nodes']], [n['id'] for n in after['nodes']])
+        self.assertEqual(after['nodes'][0]['translations']['es'], 'Ejemplos')
+        self.assertEqual(after['nodes'][1]['translations']['es'], 'Números')
+        pointer = (self.store / 'CURRENT').read_bytes()
+        self.pack['topics'][0]['translations'] = {'es': 'x' * 201}
+        with self.assertRaises(ValueError):
+            self.install()
+        self.assertEqual((self.store / 'CURRENT').read_bytes(), pointer)
+
     def test_labeled_explanations_are_explicit_not_guessed(self):
         self.assertEqual(content.tagged_translations('[ES]\nUno\n\n[EN]\nOne'), {'es': 'Uno', 'en': 'One'})
         self.assertEqual(content.tagged_translations('First line\nSecond line'), {})

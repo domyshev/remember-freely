@@ -24,11 +24,22 @@ test('server rendering uses English by default and Russian only when selected',(
  assert.match(renderToStaticMarkup(React.createElement(PreferencesProvider,null,React.createElement(Greeting))),/>Settings</);
  globalThis.localStorage={getItem:()=>JSON.stringify({interfaceLanguage:'ru'})};
  assert.match(renderToStaticMarkup(React.createElement(PreferencesProvider,null,React.createElement(Greeting))),/>Настройки</);
+ globalThis.localStorage={getItem:()=>JSON.stringify({interfaceLanguage:'es'})};
+ assert.match(renderToStaticMarkup(React.createElement(PreferencesProvider,null,React.createElement(Greeting))),/>Configuración</);
  delete globalThis.localStorage;
 });
 test('rendered question and answer texts share selected languages and escape markup',()=>{
  globalThis.localStorage={getItem:()=>JSON.stringify({interfaceLanguage:'en',contentLanguages:['ru']})};
  const output=renderToStaticMarkup(React.createElement(PreferencesProvider,null,React.createElement(QuestionText,{text:'Original',translations:{en:'English',ru:'<b>Русский</b>'}})));
  assert.match(output,/lang="ru"/);assert.match(output,/&lt;b&gt;Русский&lt;\/b&gt;/);assert.doesNotMatch(output,/English/);
+ delete globalThis.localStorage;
+});
+
+test('the menu appearance panel renders Spanish labels and saved branding safely',()=>{
+ const {AppearancePreferences}=load(path.resolve('src/Appearance.tsx'));
+ globalThis.localStorage={getItem:()=>JSON.stringify({interfaceLanguage:'es',siteHeading:'My <library>',siteTitle:'Practice',theme:'rainbow',faviconEmoji:'📘'})};
+ const output=renderToStaticMarkup(React.createElement(PreferencesProvider,null,React.createElement(AppearancePreferences)));
+ assert.match(output,/Apariencia/);assert.match(output,/Encabezado del sitio/);assert.match(output,/Título de la pestaña/);assert.match(output,/Arcoíris/);
+ assert.match(output,/value="My &lt;library&gt;"/);assert.match(output,/value="rainbow" selected=""/);
  delete globalThis.localStorage;
 });

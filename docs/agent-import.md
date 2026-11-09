@@ -136,3 +136,8 @@ translations to an already installed pack; changing only translations preserves
 answer history. Validate the new ZIP and retain the returned report separately.
 Language choices do not translate topic titles or create translated copies of a
 question. One question keeps one identity across every selected language.
+
+Use optional pack/topic `translations` objects for section, topic and subtopic
+titles, with the same stable IDs and original titles. Do not place translations
+inside an ID or create duplicate topics for different languages. Keep all real
+translated materials outside the application checkout, including title catalogs.

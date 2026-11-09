@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 
-import { defaults, loadPreferences, contentWordings, type Preferences } from './preferenceModel';
+import { defaults, loadPreferences, contentWordings, emojiFavicon, type Preferences } from './preferenceModel';
+import { spanish } from './spanish';
 import { russian } from './translations';
 const storageKey = 'practice-display-preferences-v1';
 const PreferencesContext = createContext<{ preferences: Preferences; update: <K extends keyof Preferences>(key: K, value: Preferences[K]) => void }>({ preferences: defaults, update: () => {} });
@@ -11,6 +12,14 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     catch { return defaults; }
   });
   useEffect(() => { document.documentElement.lang = preferences.interfaceLanguage; }, [preferences.interfaceLanguage]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = preferences.theme;
+    document.title = preferences.siteTitle.trim() || defaults.siteTitle;
+    let icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!icon) { icon = document.createElement('link'); icon.rel = 'icon'; document.head.append(icon); }
+    icon.href = preferences.faviconImage || (preferences.faviconEmoji ? emojiFavicon(preferences.faviconEmoji) : '/favicon.svg');
+    icon.removeAttribute('type');
+  }, [preferences.theme, preferences.siteTitle, preferences.faviconEmoji, preferences.faviconImage]);
   function update<K extends keyof Preferences>(key: K, value: Preferences[K]) {
     setPreferences(current => {
       const next = { ...current, [key]: value };
@@ -24,7 +33,8 @@ export const usePreferences = () => useContext(PreferencesContext);
 export function useT() {
   const { preferences } = usePreferences();
   return useCallback((text: string, values: Record<string, string | number> = {}) => {
-    const wording = preferences.interfaceLanguage === 'ru' ? russian[text] ?? text : text;
+    const catalog = preferences.interfaceLanguage === 'ru' ? russian : preferences.interfaceLanguage === 'es' ? spanish : {};
+    const wording = catalog[text] ?? text;
     return wording.replace(/\{(\w+)\}/g, (match, key: string) => String(values[key] ?? match));
   }, [preferences.interfaceLanguage]);
 }

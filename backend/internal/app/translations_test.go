@@ -32,6 +32,8 @@ func translatedTestZIP(t *testing.T) []byte {
 			if err = json.Unmarshal(data, &pack); err != nil {
 				t.Fatal(err)
 			}
+			pack["translations"] = map[string]string{"es": "Ejemplos"}
+			pack["topics"].([]any)[0].(map[string]any)["translations"] = map[string]string{"es": "Números"}
 			q := pack["questions"].([]any)[0].(map[string]any)
 			q["translations"] = map[string]string{"ru": "Сколько будет два плюс два?", "en": "What is two plus two?"}
 			q["explanation_translations"] = map[string]string{"ru": "Сложите две пары.", "fr": "Deux paires."}
@@ -119,6 +121,9 @@ func TestAccountTranslationsPersistAcrossUpdateAndHistory(t *testing.T) {
 		t.Fatal("question identity changed")
 	}
 	library := request(t, app.Handler(), "GET", "/api/library", "", cookie)
+	if !bytes.Contains(library.Body.Bytes(), []byte("Números")) {
+		t.Fatal("topic title translations lost in account snapshot")
+	}
 	if !bytes.Contains(library.Body.Bytes(), []byte(`"ru"`)) || !bytes.Contains(library.Body.Bytes(), []byte(`"languages"`)) {
 		t.Fatal("library language metadata missing")
 	}

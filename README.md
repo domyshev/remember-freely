@@ -34,7 +34,7 @@ In another terminal:
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. The interface defaults to English; Russian is available in Settings. Question and explanation text can be written in any language. In local log mode, login codes appear in the API console.
+Open `http://127.0.0.1:5173`. The interface defaults to English; Russian and Spanish are available in Settings. Question and explanation text can be written in any language. In local log mode, login codes appear in the API console.
 
 See `.env.example` for supported settings. Export environment variables through your shell or process manager; the server does not automatically load `.env` files. SQLite defaults to `data/practice.db`; content defaults to `data/content`. Both are ignored by Git. Use a fresh database for this application.
 
@@ -150,7 +150,7 @@ only after verification. Publishing an image alone is not a deployment success.
 
 ## Display and language preferences
 
-Settings supports English (default) and Russian interface labels, an independent
+Settings supports English (default), Russian and Spanish interface labels, an independent
 multi-language selection for questions, answers and explanations, a default root
 section, and an option to hide a single visible root section (enabled by default).
 The dashboard can still switch to all sections when multiple packs are installed.
@@ -162,3 +162,27 @@ Content languages come from explicitly labeled translations in imported packs;
 there is no automatic translation or language detection. Unlabeled content and
 missing selected translations fall back to the original wording. See
 [question-packs.md](docs/question-packs.md#translations) for the optional fields.
+
+### Personal appearance and topic titles
+
+The account menu contains an Appearance panel for the visible site heading,
+browser tab title, favicon (emoji or a PNG/JPEG/WebP/ICO image up to 64 KiB), and
+blue, aubergine, orange and rainbow palettes. Changes apply immediately in the
+current browser; Reset appearance restores the defaults. Interface language and
+the language of section/topic/subtopic titles are separate settings. Title
+translations must be supplied by the imported pack; missing translations retain
+the original title. Version tooltips show actual UTC build metadata localized
+for display, the source commit and a deployment date when supplied by the server.
+Build time is labeled as build time, never presented as deployment time.
+
+### Where preferences are stored
+
+Display, language and appearance preferences live in this origin's browser
+`localStorage`, under `practice-display-preferences-v1`. They are not in SQLite,
+not sent to the server, and not synchronized across browsers or devices. They are
+shared by accounts using the same browser profile and site origin; signing out
+does not erase them. Clearing this site's browser storage resets them. An uploaded
+favicon is stored as a data URL in that same browser storage, not as a server file.
+If storage is unavailable or full, changes last only for the current session.
+User accounts, answer history/progress and API import metadata remain server-side
+SQLite data; API key secrets are not stored in the display preferences.

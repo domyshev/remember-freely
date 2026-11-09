@@ -7,7 +7,7 @@ COPY . .
 ARG APP_VERSION=dev
 ARG GIT_SHA=unknown
 ENV VITE_APP_VERSION=$APP_VERSION
-RUN npm run build && printf '{"version":"%s","commit":"%s"}\n' "$APP_VERSION" "$GIT_SHA" > dist/version.json
+RUN npm run build && printf '{"version":"%s","commit":"%s","built_at":"%s"}\n' "$APP_VERSION" "$GIT_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > dist/version.json
 
 FROM golang:1.24-alpine AS backend
 

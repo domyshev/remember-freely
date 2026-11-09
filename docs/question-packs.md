@@ -162,7 +162,7 @@ The interface language and material languages are independent. An empty language
 selection means all available translations. Selected languages are shown in
 selection order; if none exist for a field, its original text is displayed.
 Languages are discovered from question, answer and explanation metadata. Topic
-names remain as authored. No translation is generated or inferred from newlines.
+names use their independent title-language preference, with original-title fallback. No translation is generated or inferred from newlines.
 Explicit legacy explanation blocks beginning with `[ES]`, `[EN]`, etc. on their
 own lines are recognized when there are at least two distinct labeled blocks;
 new packs should use `explanation_translations` instead.
@@ -172,3 +172,20 @@ original answer `text` and `correct` fields. Translations may be updated without
 changing question identity or saved answer history. Re-import the updated ZIP
 and retain its new report. Existing packs without language labels continue to
 show their original content until the uploader supplies an updated pack.
+
+### Section and topic title translations
+
+The pack itself and every topic may optionally have a `translations` object
+mapping language codes to translated titles, for example:
+
+```json
+{"id": "numbers", "title": "Numbers", "translations": {"es": "Números", "ru": "Числа"}}
+```
+
+Title translations are limited to 200 characters and 32 languages. The pack's
+translations label its root section. Topic translations label both parent topics
+and leaves. Keep original IDs and titles when adding translations to an existing
+pack. The separate topic-language preference can use original titles, match the
+interface language, or select a specific language. Missing translations fall back
+to the original title. Selecting a language never creates a new topic or changes
+question membership or saved progress.

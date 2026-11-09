@@ -53,13 +53,13 @@ def text(value, label, maximum=20000):
     return value
 
 
-def translations(value):
+def translations(value, maximum=20000):
     if not isinstance(value, dict) or len(value) > 32:
         fail('Expected at most 32 language translations')
     for language, wording in value.items():
         if not re.fullmatch(r'[a-z]{2,3}(?:-[a-z0-9]{2,8})*', language):
             fail('Use lowercase BCP 47 language codes')
-        text(wording, 'translation')
+        text(wording, 'translation', maximum)
     return value
 
 
@@ -135,7 +135,8 @@ def read_files(source):
 
 def validate(files):
     pack = decode(files['pack.json'])
-    fields(pack, ['schema_version', 'id', 'title', 'topics', 'questions'])
+    fields(pack, ['schema_version', 'id', 'title', 'topics', 'questions'], ['translations'])
+    translations(pack.get('translations', {}), 200)
     if type(pack['schema_version']) is not int or pack['schema_version'] != 1:
         fail('Unsupported schema_version; expected 1')
     identifier(pack['id'])
@@ -146,7 +147,8 @@ def validate(files):
         fail('Expected 1–5000 questions')
     topics = {}
     for topic in pack['topics']:
-        fields(topic, ['id', 'title'], ['parent_id'])
+        fields(topic, ['id', 'title'], ['parent_id', 'translations'])
+        translations(topic.get('translations', {}), 200)
         identifier(topic['id'])
         text(topic['title'], 'topic title', 200)
         if topic['id'] in topics:
@@ -247,8 +249,11 @@ def normalize(files, namespace=""):
     pid = canonical('pack', identity)
     topic_ids = {topic['id']: canonical('topic:' + identity, topic['id']) for topic in source['topics']}
     pack = {'schema_version': 1, 'id': pid, 'title': source['title'], 'topics': [], 'questions': []}
+    if source.get('translations'):
+        pack['translations'] = source['translations']
     for topic in source['topics']:
         pack['topics'].append({'id': topic_ids[topic['id']], 'title': topic['title'],
+                               **({'translations': topic['translations']} if topic.get('translations') else {}),
                                **({'parent_id': topic_ids[topic['parent_id']]} if topic.get('parent_id') else {})})
     normalized = {}
     for question in source['questions']:
@@ -322,9 +327,9 @@ def compile_packs(packs, version):
     for pack_id, files in sorted(packs.items()):
         pack = validate(files)
         root = pack_id
-        nodes.append({'id': root, 'label': pack['title'], 'parent_id': None})
+        nodes.append({'id': root, 'label': pack['title'], 'translations': pack.get('translations', {}), 'parent_id': None})
         for topic in pack['topics']:
-            nodes.append({'id': topic['id'], 'label': topic['title'], 'parent_id': topic['parent_id'] if topic.get('parent_id') else root})
+            nodes.append({'id': topic['id'], 'label': topic['title'], 'translations': topic.get('translations', {}), 'parent_id': topic['parent_id'] if topic.get('parent_id') else root})
         for q in pack['questions']:
             cid = q['id']
             if cid in seen_ids:

@@ -1,3 +1,4 @@
+import { releaseStamp, type BuildMetadata, type ReleaseMetadata } from './releaseMetadata';
 import { useT } from './Preferences';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -45,7 +46,7 @@ const dayKey=(date:Date)=>date.toISOString().slice(0,10);
 function MonthCalendar({days,range,onChange,arbitrary=true}:{days:string[];range:{from:string;to:string}|null;onChange:(range:{from:string;to:string}|null)=>void;arbitrary?:boolean}) {
   const t = useT();
   const { preferences } = usePreferences();
-  const locale = preferences.interfaceLanguage === 'ru' ? 'ru-RU' : 'en-GB';
+  const locale = preferences.interfaceLanguage === 'ru' ? 'ru-RU' : preferences.interfaceLanguage === 'es' ? 'es-ES' : 'en-GB';
  const [open,setOpen]=useState(false);
  const [draft,setDraft]=useState({from:'',to:''});
  const [month,setMonth]=useState(()=>new Date().toISOString().slice(0,7));
@@ -84,7 +85,7 @@ function questionGroup(at:string,grouping:'none'|'months'|'weeks',locale:string)
 function QuestionHistoryRow({event,index,onOpen}:{event:Event;index:number;onOpen:(event:Event,index:number,button:HTMLButtonElement)=>void}) {
   const t = useT();
   const { preferences } = usePreferences();
-  const locale = preferences.interfaceLanguage === 'ru' ? 'ru-RU' : 'en-GB';
+  const locale = preferences.interfaceLanguage === 'ru' ? 'ru-RU' : preferences.interfaceLanguage === 'es' ? 'es-ES' : 'en-GB';
 
  return <div className={`linear-chip statistics-question-row ${event.correct?'passed':'failed'}`}><b>{index+1}</b><time dateTime={event.answered_at}>{new Date(event.answered_at).toLocaleString(locale,{dateStyle:'short',timeStyle:'short'})}</time><span>{event.topic}</span><button className="statistics-eye" aria-label={t('Open question {number}', {number:index+1})} aria-haspopup="dialog" onClick={e=>onOpen(event,index,e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button><i aria-hidden="true">{event.correct?'✓':'×'}</i></div>;
 }
@@ -92,7 +93,7 @@ function QuestionHistoryRow({event,index,onOpen}:{event:Event;index:number;onOpe
 export function LinearStatistics({onBack,onOpenTopic}:{onBack:()=>void;onOpenTopic:(id:string)=>void}) {
   const t = useT();
   const { preferences } = usePreferences();
-  const locale = preferences.interfaceLanguage === 'ru' ? 'ru-RU' : 'en-GB';
+  const locale = preferences.interfaceLanguage === 'ru' ? 'ru-RU' : preferences.interfaceLanguage === 'es' ? 'es-ES' : 'en-GB';
  const [questionsOpen,setQuestionsOpen]=useState(true);
  const [topicsOpen,setTopicsOpen]=useState(true);
  const [grouping,setGrouping]=useState<'none'|'months'|'weeks'>('weeks');
@@ -120,13 +121,39 @@ export function LinearStatistics({onBack,onOpenTopic}:{onBack:()=>void;onOpenTop
  </div>{active&&createPortal(<div ref={popup} role="dialog" aria-label={t('Answer {number}', {number:active.number})} className="linear-popover" style={{left:active.left,top:active.top,maxHeight:`calc(100dvh - ${active.top+12}px)`}}><header><div><time dateTime={active.event.answered_at}>{new Date(active.event.answered_at).toLocaleString(locale)}</time><p>{active.event.topic}{active.event.mode==='mistakes'?t(" · Mistake review"):''}</p></div><button aria-label={t("Close question")} onClick={()=>{trigger.current?.focus();setActive(null);}}>×</button></header>{active.event.image_url&&<img src={active.event.image_url} alt={t("Question illustration")}/>}<h3><QuestionText text={active.event.question} translations={active.event.translations} /></h3><div className="linear-answers">{active.event.answers.map(a=><div key={a.letter} className={`linear-answer ${a.correct?'right':a.selected?'wrong':''}`}><b>{a.letter}</b><span><QuestionText text={a.text} translations={a.translations} answer />{a.selected&&<small>{t("Your answer")}</small>}</span><strong>{a.correct?'✓':a.selected?'×':''}</strong></div>)}</div><p className={active.event.correct?'linear-good-text':'linear-bad-text'}>{active.event.correct?t("✓ Correct"):t("× Incorrect")}</p>{Object.values(active.event.help ?? {}).some(Boolean)&&<details><summary>{t("Explanation")}</summary><p className="linear-help"><QuestionText text={Object.values(active.event.help).find(Boolean) || ''} translations={active.event.help}/></p></details>}</div>,document.body)}</main>;
 }
 
-export function ReleaseDetails(){
+export function ReleaseDetails() {
   const t = useT();
   const { preferences } = usePreferences();
-  const locale = preferences.interfaceLanguage === 'ru' ? 'ru-RU' : 'en-GB';
- const version=import.meta.env.VITE_APP_VERSION||'dev';
- const [releases,setReleases]=useState<{version:string;deployed_at:string|null;changes:string[]}[]>([]);
- useEffect(()=>{let live=true;fetch('/api/releases',{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(data=>{if(live)setReleases(data);}).catch(()=>undefined);return()=>{live=false;};},[]);
- const release=releases.find(r=>r.version===version) || (version==='dev'?releases.find(r=>!r.deployed_at):undefined);
- return <span className="release-details" tabIndex={0} aria-label={t('Application version {version}', {version})}><span className="app-version">{version}</span><span className="release-tooltip" role="tooltip"><strong>{t("Version")}{" "}{version}</strong><time>{release?.deployed_at?new Date(release.deployed_at).toLocaleString(locale):version==='dev'?t("Local version"):t("Release date is not available yet")}</time>{release?.changes?.length?<ul>{release.changes.map(c=><li key={c}>{c}</li>)}</ul>:null}</span></span>;
+  const locale = preferences.interfaceLanguage === 'ru' ? 'ru-RU' : preferences.interfaceLanguage === 'es' ? 'es-ES' : 'en-GB';
+  const version = import.meta.env.VITE_APP_VERSION || 'dev';
+  const [build, setBuild] = useState<BuildMetadata>({});
+  const [releases, setReleases] = useState<ReleaseMetadata[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/version.json', { cache: 'no-store', signal: controller.signal })
+      .then(response => response.ok ? response.json() : {})
+      .then(data => { if (!controller.signal.aborted && data && typeof data === 'object') setBuild(data); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/releases', { cache: 'no-store', signal: controller.signal })
+      .then(response => response.ok ? response.json() : [])
+      .then(data => { if (!controller.signal.aborted && Array.isArray(data)) setReleases(data); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  const release = releases.find(item => item.version === version);
+  const stamp = releaseStamp(version, build, release);
+  const commit = build.version === version && /^[a-f0-9]{40}$/.test(build.commit ?? '') ? build.commit!.slice(0, 12) : '';
+  return <span className="release-details" tabIndex={0} aria-label={t('Application version {version}', { version })}>
+    <span className="app-version">{version}</span>
+    <span className="release-tooltip" role="tooltip">
+      <strong>{t('Version')} {version}</strong>
+      {stamp ? <time dateTime={stamp.at}>{t(stamp.label)}: {new Date(stamp.at).toLocaleString(locale)}</time> : version === 'dev' ? <span>{t('Local version')}</span> : null}
+      {commit && <code>{t('Commit')}: {commit}</code>}
+      {!!release?.changes?.length && <ul>{release.changes.map(change => <li key={change}>{change}</li>)}</ul>}
+    </span>
+  </span>;
 }
